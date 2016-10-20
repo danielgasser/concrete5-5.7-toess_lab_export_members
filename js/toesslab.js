@@ -76,15 +76,15 @@
                 }
             })
         },
-        checkCkecked = function (check) {
-            var count = parseInt($('#numExportRecs').html(), 10);
-
-            if (check) {
-                count += 1;
-            } else {
-                count -= 1;
-            }
+        checkChecked = function () {
+            var count = 0;
+            $.each($('[name="uID[]"]'), function (i, n) {
+                if ($(n).is(':checked')) {
+                    count += 1;
+                }
+            });
             $('#numExportRecs').html(count);
+            console.log(count)
         },
         getUsers = function (prop, order_by) {
             var user_group = [],
@@ -183,12 +183,22 @@
         getUsers('uName', 'asc');
     });
     $(document).on('change', '[name="uID[]"]', function () {
-        checkCkecked($(this).is(':checked'))
+        if (!$(this).is(':checked')) {
+            $('[data-search-checkbox="select-all"]').attr('checked', false);
+        }
+        checkChecked();
     });
     $(document).on('change', '[data-search-checkbox="select-all"]', function () {
-        $.each($('[name="uID[]"]'), function (i, n) {
-            checkCkecked($(n).is(':checked'))
-        });
+        if ($(this).is(':checked')) {
+            $.each($('[name="uID[]"]'), function (i, n) {
+                $(n).prop('checked', true);
+            });
+        } else {
+            $.each($('[name="uID[]"]'), function (i, n) {
+                $(n).prop('checked', false);
+            });
+        }
+        checkChecked();
     });
     $(document).on('click', '#exportNow', function () {
         var uIDs,

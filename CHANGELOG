@@ -3,3 +3,7 @@
 0.9.2 - 10/14/2016 - Default CSV-Settings at package installation added
                      Focus on empty inputs upon validation removed.
                      Default values are added on empty inputs (CSV-Settings)
+0.9.3 - 10/17/2016 - Error fixed when exporting e.g. social links and other objects
+0.9.4 - 10/19/2016 - Fixed several "use" statements
+                     Added some "use" statements
+                     Removed deprecated db methods and Loaders

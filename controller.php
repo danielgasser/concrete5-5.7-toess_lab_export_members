@@ -1,11 +1,13 @@
 <?php
-
 namespace Concrete\Package\ToessLabExportMembers;
 
-use Concrete\Core\Asset\AssetList;
-use Concrete\Core\Package\Package;
-use Concrete\Core\Page\Page;
-use Concrete\Core\Page\Single as SinglePage;
+use AssetList;
+use Package;
+use Page;
+use SinglePage;
+use Core;
+use Asset;
+use Config;
 use Concrete\Package\ToessLabExportMembers\Help\HelpServiceProvider;
 
 class Controller extends Package {
@@ -15,7 +17,7 @@ class Controller extends Package {
      */
     protected $pkgHandle = 'toess_lab_export_members';
     protected $appVersionRequired = '5.7.5.9';
-    protected $pkgVersion = '0.9.2';
+    protected $pkgVersion = '0.9.4';
     protected $pkgAutoloaderMapCoreExtensions = true;
 
     public function getPackageDescription()
@@ -49,20 +51,20 @@ class Controller extends Package {
 
     public function on_start()
     {
-        $app = \Core::make('app');
+        $app = Core::make('app');
         $pkg = $this;
         $al = AssetList::getInstance();
         $al->register(
-            'css', 'toess_lab_export_members', 'css/toesslab.css', array('position' => \Asset::ASSET_POSITION_HEADER), $pkg
+            'css', 'toess_lab_export_members', 'css/toesslab.css', array('position' => Asset::ASSET_POSITION_HEADER), $pkg
         );
         $al->register(
-            'javascript', 'toess_lab_export_members', 'js/toesslab.js', array('position' => \Asset::ASSET_POSITION_FOOTER), $pkg
+            'javascript', 'toess_lab_export_members', 'js/toesslab.js', array('position' => Asset::ASSET_POSITION_FOOTER), $pkg
         );
         $al->register(
-            'css', 'bootstrapswitch', 'js/libs/bootstrap_switch/bootstrap-switch.min.css', array('position' => \Asset::ASSET_POSITION_HEADER), $pkg
+            'css', 'bootstrapswitch', 'js/libs/bootstrap_switch/bootstrap-switch.min.css', array('position' => Asset::ASSET_POSITION_HEADER), $pkg
         );
         $al->register(
-            'javascript', 'bootstrapswitch', 'js/libs/bootstrap_switch/bootstrap-switch.min.js', array('position' => \Asset::ASSET_POSITION_FOOTER), $pkg
+            'javascript', 'bootstrapswitch', 'js/libs/bootstrap_switch/bootstrap-switch.min.js', array('position' => Asset::ASSET_POSITION_FOOTER), $pkg
         );
         $al->registerGroup('toess_lab_export_members', array(
             array('javascript', 'toess_lab_export_members'),
@@ -89,13 +91,12 @@ class Controller extends Package {
             'csv-escape' => '\\'
         );
         foreach($csvSetttings as $k => $c){
-            \Config::save('toess_lab_export_members.csv-settings.' . $k, $c);
+            Config::save('toess_lab_export_members.csv-settings.' . $k, $c);
         }
 
     }
 
     private function getOrAddSinglePage($pkg, $cPath, $cName = '', $cDescription = '') {
-        \Loader::model('single_page');
 
         $sp = SinglePage::add($cPath, $pkg);
 
