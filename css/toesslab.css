@@ -1,5 +1,5 @@
 .toesslab-attributes {
     max-height: 365px;
-    overflow-y: scroll;
+    overflow-y: auto;
     overflow-x: hidden;
 }

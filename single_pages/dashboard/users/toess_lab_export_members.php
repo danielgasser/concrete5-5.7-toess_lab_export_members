@@ -4,11 +4,13 @@
     var user_group_url = '<?php    echo $this->action('change_user_group')?>',
         user_export_url = '<?php    echo $this->action('export_to_csv')?>',
         save_csv_settings = '<?php    echo $this->action('save_csv_settings')?>',
-        warning_csv_file = '<?php echo t('Please enter a CSV-Filename.') ?>',
+        save_export_settings = '<?php    echo $this->action('save_export_settings')?>',
+        warning_csv_file = '<?php echo t('No valid CSV-Filename. Using default Filename instead.') ?>',
         warning_title = '<?php    echo t('Warning') ?>',
         csvSettings = <?php echo $csvSettingsJSON ?>,
         warning_no_members = '<?php    echo t('Please select some Users to export.') ?>',
-        user_search_url = '<?php    echo $this->action('search_users')?>';
+        user_search_url = '<?php    echo $this->action('search_users')?>',
+        base_url = '<?php    echo \URL::to('/') ?>';
 </script>
 <script>
     (function ($) {
@@ -34,7 +36,7 @@
         </div>
         <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6">
             <h3><?php echo t('Number of records to export') ?>: <span id="numExportRecs">0</span></h3>
-            <button class="btn btn-primary" id="exportNow">Export to CSV</button>
+            <button class="btn btn-primary" id="exportNow"><?php echo t('Export to CSV') ?></button>
         </div>
     </div>
     <hr>
@@ -44,10 +46,10 @@
         </div>
         <div class="col-lg-3 col-md-3 col-sm-3 col-xs-3">
             <?php
-            echo $form->label('csv-filename', t('CSV-Filename (without extension)')) ?>
+            echo $form->label('csv_filename', t('CSV-Filename (without extension)')) ?>
             <div class="input-group">
                 <?php
-                echo $form->text('csv-filename', $csvSettings['csv-filename'])
+                echo $form->text('csv_filename', $csvSettings['csv_filename'], array('placeholder' => $csvSettings['csv_filename']))
                 ?>
                 <span class="input-group-addon">.csv</span>
             </div>
@@ -83,9 +85,9 @@
                 $i = 0;
                 foreach ($columns['baseAttributes'] as $key => $ps) {
                     if ($i % 3 == 0) {
-                        echo '<div class="col-lg-3 col-md-3 col-sm-3 col-xs-3">';
+                        echo '<div class="col-lg-4 col-md-6 col-sm-6">';
                     }
-                    echo $form->checkbox('chooseBaseColumns[]', $ps['akHandle'], true, array('data-label-text' => $ps['akName'], 'data-size' => 'normal', 'data-first' => ($i == 0), 'data-handle' => $ps['akHandle']));
+                    echo $form->checkbox('chooseBaseColumns[]', $ps['akHandle'], $csvExportSettings[$ps['akHandle']], array('data-label-text' => $ps['akName'], 'data-size' => 'normal', 'data-first' => ($i == 0), 'data-handle' => $ps['akHandle']));
                     echo '<br>';
                     $i++;
                     if ($i % 3 == 0 && $i > 0) {
@@ -105,9 +107,9 @@
                 $i = 0;
                 foreach ($columns['attributes'] as $key => $ps) {
                     if ($i % 3 == 0) {
-                        echo '<div class="col-lg-3 col-md-3 col-sm-3 col-xs-3">';
+                        echo '<div class="col-lg-4 col-md-6 col-sm-6">';
                     }
-                    echo $form->checkbox('chooseColumns[]', $ps['akHandle'], true, array('data-label-text' => $ps['akName'], 'data-size' => 'normal', 'data-first' => ($i == 0), 'data-handle' => $ps['akHandle']));
+                    echo $form->checkbox('chooseColumns[]', $ps['akHandle'], $csvExportSettings[$ps['akHandle']], array('data-label-text' => $ps['akName'], 'data-size' => 'normal', 'data-first' => ($i == 0), 'data-handle' => $ps['akHandle']));
                     echo '<br>';
                     $i++;
                     if ($i % 3 == 0 && $i > 0) {
@@ -120,18 +122,24 @@
         </div>
     </div>
     <hr>
-    <div class="row">
+    <div class="row toesslab-attributes">
         <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6">
             <h3><?php echo t('Export Community Points') ?></h3>
             <?php
-            echo $form->checkbox('communityPoints', t('Community Points'), false, array('data-label-text' => t('Community Points'), 'data-size' => 'normal', 'data-first' => ($i == 0), 'data-handle' => 'uCommunityPoints'));
+            echo $form->checkbox('communityPoints', t('Community Points'), $csvExportSettings['uCommunityPoints'], array('data-label-text' => t('Community Points'), 'data-size' => 'normal', 'data-first' => ($i == 0), 'data-handle' => 'uCommunityPoints'));
             ?>
         </div>
         <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6">
             <h3><?php echo t('Export Users Groups') ?></h3>
             <?php
-            echo $form->checkbox('userGroup', t('Users Groups'), false, array('data-label-text' => t('Users Groups'), 'data-size' => 'normal', 'data-first' => ($i == 0), 'data-handle' => 'uGroups'));
+            echo $form->checkbox('userGroup', t('Users Groups'), $csvExportSettings['uGroups'], array('data-label-text' => t('Users Groups'), 'data-size' => 'normal', 'data-first' => ($i == 0), 'data-handle' => 'uGroups'));
             ?>
+        </div>
+    </div>
+    <hr>
+    <div class="row">
+        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+            <button style="width: 100%;" id="save_export_settings" class="btn btn-primary"><?php echo t('Save Export Settings (Optionnal)') ?></button>
         </div>
     </div>
     <hr>
@@ -150,7 +158,7 @@
                 $i = 0;
                 foreach ($possibleGroups as $key => $ps) {
                     if ($i % 4 == 0) {
-                        echo '<div class="col-lg-4 col-md-4 col-sm-4 col-xs-4">';
+                        echo '<div class="col-lg-4">';
                     }
                     echo $form->checkbox('chooseUserGroup[]', $key, ($i == 0), array('data-label-text' => $ps, 'data-size' => 'normal', 'data-first' => ($i == 0)));
                     echo '<br>';
@@ -215,23 +223,7 @@
                     </tr>
                     </thead>
                     <tbody id="userList">
-                    <?php
-                    if (sizeof($totalRecords) > 0) {
-                        foreach ($users as $u) { ?>
-                            <tr>
-                                <td>
-                                    <?php
-                                    echo $form->checkbox('uID[]', $u->uID, true, array('data-label-text' => $u->uID, 'data-size' => 'normal', 'class' => 'ccm-flat-checkbox'));
-                                    ?>
-                                </td>
-                                <td>
-                                    <?php echo  '<a href="mailto:' . $u->uEmail . '">' . $u->uEmail . '</a>'; ?>
-                                </td>
-                            </tr>
-                            <?php
-                        }
-                    }
-                    ?>
+
                     </tbody>
                 </table>
                 <?php

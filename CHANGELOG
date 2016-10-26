@@ -7,3 +7,13 @@
 0.9.4 - 10/19/2016 - Fixed several "use" statements
                      Added some "use" statements
                      Removed deprecated db methods and Loaders
+0.9.5 - 10/25/2016 - Added link to users dashboard detail page
+                     Removed obsolete foreach in view (Done by JS)
+0.9.6 - 10/25/2016 - Added missing translation functions
+                     Default CSV-Filename added
+                     Regex to allow only alphanumeric characters
+                     Remove file extension, if any
+                     Changed way how "Include Super Admin" feature works
+0.9.7 - 10/25/2016 - Replaced preg_replace with Core::make('helper/text')->alphanum()
+                     When no User groups are selected "registered Users" is turned On
+0.9.8 - 10/25/2016 - Added feature to save export settings

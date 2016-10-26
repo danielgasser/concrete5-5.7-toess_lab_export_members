@@ -1,6 +1,8 @@
 <?php
 namespace Concrete\Package\ToessLabExportMembers\Controller\SinglePage\Dashboard\Users;
 
+use Concrete\Core\File\File;
+use Concrete\Core\File\Importer;
 use Concrete\Core\User\Group\Group;
 use UserAttributeKey;
 use Core;
@@ -18,6 +20,7 @@ class ToessLabExportMembers extends DashboardPageController
         $this->set('columns', $this->getUserAttributeColumns());
         $this->set('csvSettingsJSON', json_encode(Config::get('toess_lab_export_members.csv-settings')));
         $this->set('csvSettings', Config::get('toess_lab_export_members.csv-settings'));
+        $this->set('csvExportSettings', Config::get('toess_lab_export_members.export-settings'));
     }
 
     /**
@@ -102,15 +105,40 @@ class ToessLabExportMembers extends DashboardPageController
         return $users;
     }
 
+    public function save_export_settings()
+    {
+        $exportSettings = Request::getInstance()->get('exportSettings');
+        foreach ($exportSettings as $e) {
+            Config::save('toess_lab_export_members.export-settings.' . $e['handle'], ($e['val'] == 'true'));
+        }
+        if (sizeof($exportSettings) == sizeof(Config::get('toess_lab_export_members.export-settings'))) {
+            echo Core::make('helper/json')->encode(array('success' => t('Export Settings have been saved.')));
+            exit;
+        } else {
+            echo Core::make('helper/json')->encode(array('success' => t('Could not save all Export Settings. Please try again')));
+            exit;
+        }
+    }
+
     public function save_csv_settings()
     {
+        $th = Core::make('helper/text');
         $csvSettings = Request::getInstance()->get('csvData');
         foreach ($csvSettings as $c) {
-            if ($c['handle'] == 'csv-filename' && strlen($c['val']) == 0) {
-                echo Core::make('helper/json')->encode(array('error' => t('Please enter a CSV-Filename.')));
-                exit;
+            if ($c['handle'] == 'csv_filename') {
+                if (strlen($c['val']) == 0) {
+                    echo Core::make('helper/json')->encode(array('error' => t('Please enter a valid CSV-Filename.')));
+                    exit;
+                } else {
+
+                    $s = strpos($c['val'], '.');
+                    if ($s !== false) {
+                        $c['val'] = substr($c['val'], 0, $s);
+                    }
+                    $c['val'] = $th->alphanum($c['val']);
+                }
             }
-            if ($c['handle'] != 'csv-filename' && strlen($c['val']) > 1 || strlen($c['val']) < 1) {
+            if ($c['handle'] != 'csv_filename' && strlen($c['val']) > 1 || strlen($c['val']) < 1) {
                 echo Core::make('helper/json')->encode(array('error' => t('%s: Please enter 1 character only', $c['name'])));
                 exit;
             }
@@ -246,7 +274,6 @@ class ToessLabExportMembers extends DashboardPageController
             exit;
         }
         $fileName = str_replace($replace, $with, $fileName);
-        $fileName = preg_replace('/[^a-zA-Z]/i','',$fileName);
         $baseColumns = Request::getInstance()->get('baseColumns');
         $columns = Request::getInstance()->get('columns');
         $userPoints = Request::getInstance()->get('communityPoints');
@@ -291,9 +318,9 @@ class ToessLabExportMembers extends DashboardPageController
                                     $s[$key][$k] = $t;
                                 }
                             }
-                            $res[$ui->uID][$c] = serialize($s);
+                            $res[$ui->uID][$c] = Core::make('helper/json')->encode($s);
                         } else {
-                            $res[$ui->uID][$c] = serialize($testAttribute);
+                            $res[$ui->uID][$c] = Core::make('helper/json')->encode($testAttribute);
                         }
                     } else {
                         $res[$ui->uID][$c] = str_replace("\n", '\\n', $testAttribute);
@@ -315,7 +342,7 @@ class ToessLabExportMembers extends DashboardPageController
                         $groups[$gid]['gDescription'] = $group->getGroupDescription();
                         $groups[$gid]['gPath'] = $group->getGroupPath();
                         $groups[$gid]['gChildGroups'] = $group->getChildGroups();
-                        $res[$ui->uID]['usersGroups'] = serialize($groups);
+                        $res[$ui->uID]['usersGroups'] = Core::make('helper/json')->encode($groups);
                     }
                 }
             }
@@ -325,7 +352,7 @@ class ToessLabExportMembers extends DashboardPageController
         }
         if ($userPoints == 'true') {
             foreach ($ids as $id) {
-                $res[$id]['communityPoints'] = serialize($this->getCommunityPoints($id));
+                $res[$id]['communityPoints'] = Core::make('helper/json')->encode($this->getCommunityPoints($id));
             }
             $columns[] = 'communityPoints';
         }
@@ -363,7 +390,11 @@ class ToessLabExportMembers extends DashboardPageController
             echo Core::make('helper/json')->encode(array('error' => $csvErrors));
             exit;
         }
-        echo Core::make('helper/json')->encode(array('success' => t('%s record(s) have been saved. Download <a href="%s">%s</a> file', $csvCount, BASE_URL . '/' . $csvFileName, $csvFileName)));
+        $fi = new Importer();
+        $existingFile = File::
+        $fi->import($csvFileName, $fileName . '.csv');
+        fclose($csvFile);
+        echo Core::make('helper/json')->encode(array('success' => t('%s record(s) have been saved. The file \'%s\' has been added to your <a href="%s">File Manager</a>', $csvCount, $fileName . '.csv', \URL::to('/dashboard/files/search'))));
         exit;
     }
 

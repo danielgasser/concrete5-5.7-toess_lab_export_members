@@ -17,7 +17,7 @@ class Controller extends Package {
      */
     protected $pkgHandle = 'toess_lab_export_members';
     protected $appVersionRequired = '5.7.5.9';
-    protected $pkgVersion = '0.9.4';
+    protected $pkgVersion = '0.9.8.1';
     protected $pkgAutoloaderMapCoreExtensions = true;
 
     public function getPackageDescription()
@@ -36,17 +36,6 @@ class Controller extends Package {
         $pkg = parent::install();
         $this->installOrUpgrade($pkg);
         $this->setCsvSettings();
-    }
-
-    public function upgrade()
-    {
-        parent::upgrade();
-        $pkg = self::getPackageHandle();
-    }
-
-    public function uninstall()
-    {
-        parent::uninstall();
     }
 
     public function on_start()
@@ -80,7 +69,7 @@ class Controller extends Package {
 
     private function installOrUpgrade($pkg)
     {
-        $this->getOrAddSinglePage($pkg, 'dashboard/users/toess_lab_export_members', 'toesslab - Export Members');
+        $this->getOrAddSinglePage($pkg, 'dashboard/users/toess_lab_export_members', t('toesslab - Export Members'));
     }
 
     private function setCsvSettings()
@@ -88,7 +77,8 @@ class Controller extends Package {
         $csvSetttings =  array(
             'csv-delimiter' => ';',
             'csv-enclosure' => '"',
-            'csv-escape' => '\\'
+            'csv-escape' => '\\',
+            'csv-filename' => 'toesslab'
         );
         foreach($csvSetttings as $k => $c){
             Config::save('toess_lab_export_members.csv-settings.' . $k, $c);

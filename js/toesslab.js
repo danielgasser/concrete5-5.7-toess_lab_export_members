@@ -2,16 +2,34 @@
     "use strict";
     var setDefaultCSvValues = function () {
             $.each($('[id^="csv-"]'), function (i, n) {
-                if (n.value === '' && $(n).attr('id') !== 'csv-filename') {
-                    $(n).val(window.csvSettings[$(n).attr('id')]);
+                $(n).val(window.csvSettings[$(n).attr('id')]);
+            });
+        },
+        saveExportSettings = function (data) {
+            $.ajax({
+                method: 'GET',
+                url: window.save_export_settings,
+                data: {
+                    exportSettings: data
+                },
+                success: function (data) {
+                    var dats = $.parseJSON(data);
+                    if(dats.hasOwnProperty('error')) {
+                        setMessages(dats.error, true);
+                    } else {
+                        setMessages(dats.success, false);
+                    }
                 }
             });
-        },saveCSVSettings = function (data) {
+        },
+        saveCSVSettings = function (data) {
             $.ajax({
                 method: 'GET',
                 url: window.save_csv_settings,
                 data: {
                     csvData: data
+                },
+                success: function (data) {
                 }
             });
         },
@@ -64,7 +82,7 @@
                     columns: cols,
                     usersGroups: ug,
                     communityPoints: cp,
-                    csv_filename: $('#csv-filename').val()
+                    csv_filename: $('#csv_filename').val()
                 },
                 success: function (data) {
                     var dats = $.parseJSON(data);
@@ -84,7 +102,6 @@
                 }
             });
             $('#numExportRecs').html(count);
-            console.log(count)
         },
         getUsers = function (prop, order_by) {
             var user_group = [],
@@ -146,7 +163,7 @@
                 str += '<tr class="' + i + '">' +
                     '<td class="col-lg-1 col-md-1 col-sm-1 col-xs-12"><input type="checkbox" id="uID_' + n.uID + '" name="uID[]" class="ccm-flat-checkbox" value="' + n.uID + '" ' + is_checked + '>';
                 str += '</td>';
-                str += '<td class="col-lg-1 col-md-1 col-sm-1 col-xs-12">' + n.uName + '</td>';
+                str += '<td class="col-lg-1 col-md-1 col-sm-1 col-xs-12"><a href="' + window.base_url + '/dashboard/users/search/view/' + n.uID + '">' + n.uName + '</a></td>';
                 str += '<td class="col-lg-3 col-md-3 col-sm-3 col-xs-12"><a href="mailto:' + n.uEmail + '">' + n.uEmail + '</a></td>';
                 str += '<td class="col-lg-3 col-md-3 col-sm-3 col-xs-12">' + n.uDateAdded + '</a></td>';
                 str += '<td class="col-lg-3 col-md-3 col-sm-3 col-xs-12">' + n.uNumLogins + '</a></td>';
@@ -175,12 +192,13 @@
                 }
             });
             if (allStates === 0) {
-                $('input[name^="adminInc"]').bootstrapSwitch('state', false);
+                $('input[name^="chooseUserGroup"][data-first="1"]').bootstrapSwitch('state', true);
             }
         };
 
     $(document).ready(function () {
         getUsers('uName', 'asc');
+        $('.bootstrap-switch-id-adminInc').hide();
     });
     $(document).on('change', '[name="uID[]"]', function () {
         if (!$(this).is(':checked')) {
@@ -199,6 +217,17 @@
             });
         }
         checkChecked();
+    });
+    $(document).on('click', '#save_export_settings', function (e) {
+        e.preventDefault();
+        var attr = $('.toesslab-attributes').find('input'),
+            csvSet = attr.map(function (i, n) {
+            return {
+                handle: $(n).attr('data-handle'),
+                val: $(n).is(':checked')
+            }
+        }).get();
+        saveExportSettings(csvSet);
     });
     $(document).on('click', '#exportNow', function () {
         var uIDs,
@@ -234,8 +263,7 @@
         searchUsers(search);
     });
     $(document).on('change blur', '[id^="csv-"]', function (e) {
-        var val = $(this).val(),
-            csvData = $('[id^="csv-"]').map(function (i, n) {
+        var csvData = $('[id^="csv-"]').map(function (i, n) {
                     return {
                         handle: $(n).attr('id'),
                         val: $(n).val(),
@@ -243,11 +271,31 @@
                     }
             }).get();
         e.preventDefault();
-        if ($(this).attr('id') === 'csv-filename' && val.length <= 0) {
-            setMessages(window.warning_csv_file, true);
-            return false;
-        }
         setDefaultCSvValues();
+        saveCSVSettings(csvData);
+    });
+    $(document).on('change blur', '#csv_filename', function (e) {
+        var val = $(this).val(),
+            csvData = $(this).map(function (i, n) {
+                    return {
+                        handle: $(n).attr('id'),
+                        val: $(n).val(),
+                        name: $(n).prev('label').text()
+                    }
+            }).get();
+        e.preventDefault();
+        if (val.indexOf('.') > -1) {
+            val = val.substring(0, val.indexOf('.'));
+        }
+        val = val.replace(/\W+/g, '');
+        if (val.length === 0) {
+            setMessages(window.warning_csv_file, true);
+            $(this).val(window.csvSettings[$(this).attr('id')]);
+
+        } else {
+
+            $(this).val(val);
+        }
         saveCSVSettings(csvData);
     });
     $(document).on('click', '[data-search-checkbox="select-all"]', function () {
@@ -266,10 +314,17 @@
     $(document).on('switchChange.bootstrapSwitch', 'input[name^="chooseUserGroup"]', function (event, state) {
         var prop = 'uName',
             by = 'asc';
+        if ($(this).attr('id') === 'chooseUserGroup_3') {
+            if (state) {
+                $('.bootstrap-switch-id-adminInc').show();
+            } else {
+                $('.bootstrap-switch-id-adminInc').hide();
+            }
+        }
         if ($(this).attr('data-first') === '1') {
             if (state) {
                 $('input[name^="chooseUserGroup"][data-first!="1"]').bootstrapSwitch('state', false);
-                $('input[name^="adminInc"]').bootstrapSwitch('state', false);
+                $('.bootstrap-switch-id-adminInc').hide();
             }
         } else {
             if (state) {
