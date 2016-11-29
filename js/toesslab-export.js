@@ -13,6 +13,7 @@
                     exportSettings: data
                 },
                 success: function (data) {
+                    $('#test').html(data)
                     var dats = $.parseJSON(data);
                     if(dats.hasOwnProperty('error')) {
                         setMessages(dats.error, true);
@@ -30,6 +31,11 @@
                     csvData: data
                 },
                 success: function (data) {
+                    var dats = $.parseJSON(data);
+                    $.each(dats, function (i, n) {
+                        console.log(i, n);
+                        $('#' + i).val(n);
+                    })
                 }
             });
         },
@@ -49,6 +55,24 @@
                     fillUserTable(user_list, dats.res_count, user_list_body);
                 }
             })
+        },
+        progressed = function () {
+            var xhr = new window.XMLHttpRequest();
+            xhr.upload.addEventListener("progress", function(evt){
+                if (evt.lengthComputable) {
+                    var percentComplete = evt.loaded / evt.total;
+                    //Do something with upload progress
+                    console.log(percentComplete);
+                }
+            }, false);
+            xhr.addEventListener("progress", function(evt){
+                if (evt.lengthComputable) {
+                    var percentComplete = evt.loaded / evt.total;
+                    //Do something with download progress
+                    console.log(percentComplete);
+                }
+            }, false);
+            return xhr;
         },
         setMessages = function (msg, error) {
             if ($('#dialog_csv_error').length === 0) {
@@ -74,6 +98,7 @@
         },
         exportUsers = function (ids, baseCols, cols, cp, ug) {
             $.ajax({
+             //   xhr: progressed(),
                 method: 'POST',
                 url: window.user_export_url,
                 data: {
@@ -85,6 +110,8 @@
                     csv_filename: $('#csv_filename').val()
                 },
                 success: function (data) {
+                    $('#test').html(data);
+                    return false;
                     var dats = $.parseJSON(data);
                     if(dats.hasOwnProperty('error')) {
                         setMessages(dats.error, true);
@@ -239,7 +266,6 @@
             setMessages(window.warning_no_members, true);
             return false;
         }
-        setDefaultCSvValues();
         uIDs = $('[name="uID[]"]').map(function (i, n) {
             if ($(n).is(':checked')) {
                 return $(n).val();
@@ -263,15 +289,16 @@
         searchUsers(search);
     });
     $(document).on('change blur', '[id^="csv-"]', function (e) {
-        var csvData = $('[id^="csv-"]').map(function (i, n) {
-                    return {
-                        handle: $(n).attr('id'),
-                        val: $(n).val(),
-                        name: $(n).prev('label').text()
-                    }
+        var forbiddenChar = '*',
+            csvData = $('[id^="csv-"]').map(function (i, n) {
+                var value = $(n).val();
+                return {
+                    handle: $(n).attr('id'),
+                    val: (value.length === 0 || value.length > 1 || value === forbiddenChar) ? window.csvSettings[$(n).attr('id')] : value,
+                    name: $(n).prev('label').text()
+                }
             }).get();
         e.preventDefault();
-        setDefaultCSvValues();
         saveCSVSettings(csvData);
     });
     $(document).on('change blur', '#csv_filename', function (e) {

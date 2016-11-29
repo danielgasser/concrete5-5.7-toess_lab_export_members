@@ -17,17 +17,17 @@ class Controller extends Package {
      */
     protected $pkgHandle = 'toess_lab_export_members';
     protected $appVersionRequired = '5.7.5.9';
-    protected $pkgVersion = '0.9.8.1';
+    protected $pkgVersion = '0.9.9';
     protected $pkgAutoloaderMapCoreExtensions = true;
 
     public function getPackageDescription()
     {
-        return t("Export Site members to CSV (Excel).");
+        return t("Export/Import Site members to CSV (Excel).");
     }
 
     public function getPackageName()
     {
-        return t("Export Site members to CSV");
+        return t("Export/Import Site members to CSV");
     }
 
 
@@ -44,10 +44,22 @@ class Controller extends Package {
         $pkg = $this;
         $al = AssetList::getInstance();
         $al->register(
-            'css', 'toess_lab_export_members', 'css/toesslab.css', array('position' => Asset::ASSET_POSITION_HEADER), $pkg
+            'css', 'toess_lab_export_members', 'css/toesslab-export.css', array('position' => Asset::ASSET_POSITION_HEADER), $pkg
         );
         $al->register(
-            'javascript', 'toess_lab_export_members', 'js/toesslab.js', array('position' => Asset::ASSET_POSITION_FOOTER), $pkg
+            'javascript', 'toess_lab_export_members', 'js/toesslab-export.js', array('position' => Asset::ASSET_POSITION_FOOTER), $pkg
+        );
+        $al->register(
+            'css', 'toess_lab_import_members', 'css/toesslab-import.css', array('position' => Asset::ASSET_POSITION_HEADER), $pkg
+        );
+        $al->register(
+            'javascript', 'toess_lab_import_members', 'js/toesslab-import.js', array('position' => Asset::ASSET_POSITION_FOOTER), $pkg
+        );
+        $al->register(
+            'css', 'jquery-ui', '/js/libs/jquery-ui/jquery-ui.css', array('position' => Asset::ASSET_POSITION_HEADER), $pkg
+        );
+        $al->register(
+            'javascript', 'jquery-ui', '/js/libs/jquery-ui/jquery-ui.min.js', array('position' => Asset::ASSET_POSITION_FOOTER), $pkg
         );
         $al->register(
             'css', 'bootstrapswitch', 'js/libs/bootstrap_switch/bootstrap-switch.min.css', array('position' => Asset::ASSET_POSITION_HEADER), $pkg
@@ -59,9 +71,17 @@ class Controller extends Package {
             array('javascript', 'toess_lab_export_members'),
             array('css', 'toess_lab_export_members'),
         ));
+        $al->registerGroup('toess_lab_import_members', array(
+            array('javascript', 'toess_lab_import_members'),
+            array('css', 'toess_lab_import_members'),
+        ));
         $al->registerGroup('bootstrapswitch', array(
             array('css', 'bootstrapswitch'),
             array('javascript', 'bootstrapswitch'),
+        ));
+        $al->registerGroup('jquery-ui', array(
+            array('css', 'jquery-ui'),
+            array('javascript', 'jquery-ui'),
         ));
         $provider = new HelpServiceProvider($app);
         $provider->register();
@@ -70,6 +90,7 @@ class Controller extends Package {
     private function installOrUpgrade($pkg)
     {
         $this->getOrAddSinglePage($pkg, 'dashboard/users/toess_lab_export_members', t('toesslab - Export Members'));
+        $this->getOrAddSinglePage($pkg, 'dashboard/users/toess_lab_import_members', t('toesslab - Import Members'));
     }
 
     private function setCsvSettings()
