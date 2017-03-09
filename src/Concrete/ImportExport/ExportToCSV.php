@@ -1,7 +1,17 @@
 <?php
 namespace Concrete\Package\ToessLabExportMembers\ImportExport;
+use Concrete\Core\Attribute\Category\UserCategory;
+use Concrete\Core\Attribute\Key\UserKey;
+use Concrete\Core\Entity\Attribute\Key\ExpressKey;
+use Concrete\Core\Entity\Attribute\Value\Value\ExpressValue;
+use Concrete\Core\Entity\Attribute\Value\Value\SelectedSocialLink;
+use Concrete\Core\Entity\Attribute\Value\Value\SocialLinksValue;
+use Concrete\Core\Entity\Express\Entity;
+use Concrete\Core\Entity\Express\Entry;
+use Concrete\Core\Express\EntryList;
 use Concrete\Core\File\Service\Zip;
-use Concrete\Core\User\User;
+use Concrete\Core\Logging\Logger;
+use Concrete\Core\Tree\Node\Type\Topic;
 use Concrete\Package\ToessLabExportMembers\Helper\Tools;
 use Core;
 use Concrete\Core\User\Group\Group;
@@ -9,8 +19,7 @@ use \Concrete\Core\User\Point\Entry as UserPointEntry;
 use Config;
 use Concrete\Core\File\Importer;
 use UserAttributeKey;
-use Concrete\Attribute\Select\Option;
-
+use Express;
 /**
  * Created by https://toesslab.ch/
  * User: Daniel Gasser
@@ -47,6 +56,7 @@ class ExportToCSV
     protected $userIds = array();
     protected $fileName = 'toesslab';
     protected $fileNameCleaned;
+    protected $zipName;
     protected $csvFileName;
     protected $baseColumns = array();
     protected $columns = array();
@@ -55,20 +65,27 @@ class ExportToCSV
     protected $userInfoFactory;
     protected $csvSettings = array();
     protected $results = array();
+    protected $timeStamp;
+    protected $entityManager;
 
     function __construct($args)
     {
+        // ToDo hint for DB, app change when needed
+
         $app = Core::make('app');
         $this->db = Core::make('database');
-        $this->userInfoFactory = $app->make('Concrete\Core\User\UserInfoFactory');
+        $this->userInfoFactory = $app->make('Concrete\Core\User\UserInfo');
         $this->csvSettings = Config::get('toess_lab_export_members.csv-settings');
         $this->setPostData($args);
+        $this->entityManager = Core::make('Doctrine\ORM\EntityManager');
     }
 
     private function setPostData($args)
     {
+        $this->timeStamp = new \DateTime();
+        $this->timeStamp = $this->timeStamp->format('Y-m-d-H-i-s');
         $this->userIds = $args['ids'];
-        $this->fileName = $args['fileName'];
+        $this->fileName = $this->timeStamp . '_' . $args['fileName'];
         $this->baseColumns = $args['baseColumns'];
         $this->columns = $args['columns'];
         $this->userPoints = ($args['userPoints'] == 'true');
@@ -88,12 +105,22 @@ class ExportToCSV
 
     public function getFilenameCleaned()
     {
-        return $this->fileNameCleaned;
+        return str_replace($this->replace, $this->with, $this->fileName);
     }
 
     public function getCSVFilename()
     {
         return $this->csvFileName;
+    }
+
+    public function getFilename()
+    {
+        return $this->fileName;
+    }
+
+    public function getZipFilename()
+    {
+        return $this->zipName;
     }
 
     public function getUsers()
@@ -103,41 +130,66 @@ class ExportToCSV
         $r = $this->db->executeQuery($query);
         $uRes = $r->fetchAll(\PDO::FETCH_ASSOC);
         $userInfoObjects = array();
-        $userAvatars = array();
         foreach ($uRes as $u) {
             foreach ($u as $k => $ua) {
                 $this->results[$u['uID']][$k] = $ua;
             }
         }
-       // dd($this->columns);
         foreach ($this->userIds as $id) {
             $ui = $this->userInfoFactory->getByID($id);
             $userInfoObjects[] = $ui;
+            //Zend Queue
             foreach ($this->columns as $c) {
                 if ($ui->getAttribute($c) == NULL) {
-                    $this->results[$ui->uID][$c] = 'NULL';
+                    $this->results[$id][$c] = 'NULL';
                 } else {
-                    $testAttribute = $ui->getAttribute($c);
-                    if (is_array($testAttribute)) {
-                        if (get_class($testAttribute[0]) == 'Concrete\Core\Tree\Node\Type\Topic') {
+                    $uiAttribute = $ui->getAttribute($c);
+                    if (is_array($uiAttribute)) {
+                        if ($uiAttribute[0] instanceof Topic) {
                             $s = array();
-                            foreach ($testAttribute as $key => $ta) {
+                            foreach ($uiAttribute as $key => $ta) {
                                 foreach ((array)$ta->getTreeNodeJSON() as $k => $t) {
                                     $s[$key][$k] = $t;
                                 }
                             }
-                            $this->results[$ui->uID][$c] = Core::make('helper/json')->encode($s);
+                            $this->results[$id][$c] = Core::make('helper/json')->encode($s);
                         } else {
-                            $this->results[$ui->uID][$c] = Core::make('helper/json')->encode($testAttribute);
+                            $this->results[$id][$c] = Core::make('helper/json')->encode($uiAttribute);
                         }
+                    } elseif($uiAttribute instanceof SocialLinksValue) {
+                        $s = array();
+                        foreach($uiAttribute->getSelectedLinks()->getValues() as  $key => $value) {
+                            $s[$key] = $this->getSocialLinksValues($value);
+                        }
+                        $this->results[$id][$c] = Core::make('helper/json')->encode($s);
+                    } elseif ($uiAttribute instanceof ExpressValue) {
+                        $a = array();
+                            $a[] = $this->getExpressObject($uiAttribute);
+                            /*
+                            foreach($entry->getEntity()->getAttributeKeyCategory()->getList() as $e) {
+                                if ($e->getAttributeType()->getAttributeTypeHandle() == 'express') {
+                                    $a[$e->getAttributeKeyHandle()] = $this->getExpressEntityEntry($e);
+                                } else {
+                                    $a[$e->getAttributeKeyHandle()] = $entry->getAttribute($e->getAttributeKeyHandle());
+                                }
+                            }
+                            */
+                        //}
+                        $this->results[$id][$c] = Core::make('helper/json')->encode($a);
+                    } elseif ($uiAttribute instanceof \DateTime) {
+                        $this->results[$id][$c] = str_replace("\n", '\\n', $uiAttribute->format('Y-m-d h:s:i'));
                     } else {
-                        $this->results[$ui->uID][$c] = str_replace("\n", '\\n', $testAttribute);
+                        $this->results[$id][$c] = str_replace("\n", '\\n', $uiAttribute);
                     }
+                    //$r = $this->entityManager->getRepository('\Concrete\Core\Entity\Express\Entity');
+                  //  dd($r->findPublicEntities()[1]);
+                   /*
+                   } elseif(get_class($testAttribute) == 'Concrete\Core\Entity\Attribute\Value\Value\SocialLinksValue') {
+                        $this->results[$id][$c] = Core::make('helper/json')->encode(t('Social Links can\'t be exported in this version.'));
+                    } elseif(get_class($testAttribute) == 'Concrete\Core\Entity\Attribute\Value\Value\ExpressValue') {
+                        $this->results[$id][$c] = Core::make('helper/json')->encode(t('Express objects can\'t be exported in this version.'));
+                    */
                 }
-            }
-            if ($ui->hasAvatar()){
-                $avatar = $ui->getUserAvatar($ui);
-                $userAvatars[$ui->uID] = $avatar->getPath();
             }
         }
         if($this->usersGroups){
@@ -149,7 +201,7 @@ class ExportToCSV
                     $userGroupIDs[] = Group::getByName('Administrators')->getGroupID();
                 }
                 $groups = $this->getUserGroups($userGroupIDs);
-                $this->results[$ui->uID]['usersGroups'] = Core::make('helper/json')->encode($groups);
+                $this->results[$u->uID]['usersGroups'] = Core::make('helper/json')->encode($groups);
             }
             $this->columns[] = 'userGroups';
         }
@@ -159,25 +211,69 @@ class ExportToCSV
             }
             $this->columns[] = 'communityPoints';
         }
-        if(sizeof($userAvatars) > 0) {
-            $this->zipUserAvatars($userAvatars);
-        }
+        $this->zipUserAvatars();
         if(sizeof($this->results) == 0) {
             return false;
         }
         return true;
     }
 
-    private function zipUserAvatars(array $uIds)
+    private function getExpressObject($attr)
     {
-        $zip = new Zip();
-        $timestamp = new \DateTime();
-        foreach ($uIds as $k => $a) {
-            if(strpos($a, 'avatar_none') === false){
-                copy(DIRNAME_APPLICATION . '/files/avatars/' . $k . '.jpg', DIRNAME_APPLICATION . '/files/toess_lab_export_members/' . $k . '.jpg');
+        $data = array();
+        foreach ($attr->getSelectedEntries() as $expressValueEntry) {
+            foreach($expressValueEntry->getEntity()->getAttributeKeyCategory()->getList() as $entry) {
+                if ($entry->getAttributeTypeHandle() == 'express') {
+                    $data = $this->getExpressValue($entry);
+               } else {
+                    $data[$entry->getAttributeKeyFuckHandle()] = $expressValueEntry->getAttribute($entry->getAttributeKeyHandle());
+               }
             }
         }
-        $zip->zip(DIRNAME_APPLICATION . '/files/toess_lab_export_members/', 'userAvatars_' . $timestamp->format('Y-m-d-H-i-s') . '.zip');
+        return $data;
+    }
+
+    private function getExpressValue(ExpressKey $entry)
+    {
+        $data = array();
+        $list = new EntryList($entry->getEntity());
+        $aa = $list->getResults();
+        foreach($aa as $subSubEntry) {
+            foreach($entry->getEntity()->getAttributeKeyCategory()->getList() as $Eentry){
+                $data[$entry->getAttributeKeyHandle()][$subSubEntry->getAttributeKeyHandle()][$Eentry->getAttributeKeyHandle()] = $subSubEntry->getAttribute($Eentry->getAttributeKeyHandle());
+            }
+        }
+        return $data;
+    }
+
+    private function getSocialLinksValues(SelectedSocialLink $attr)
+    {
+        $s = array();
+        $s['service'] = $attr->getService();
+        $s['serviceInfo'] = $attr->getServiceInfo();
+        return $s;
+    }
+
+    private function zipUserAvatars()
+    {
+        $zip = new Zip();
+        $dirIncoming = DIRNAME_APPLICATION . '/files/incoming/';
+        $dirAvatars = DIRNAME_APPLICATION . '/files/avatars/';
+        $this->zipName = $this->getFilenameCleaned() . '_userAvatars.zip';
+        if (!file_exists($dirIncoming) && !is_dir($dirIncoming)) {
+            mkdir($dirIncoming);
+        }
+        if (!file_exists($dirAvatars) && !is_dir($dirAvatars)) {
+            mkdir($dirAvatars);
+        }
+        if (!Tools::checkEmptyDir($dirAvatars)) {
+            $zip->zip($dirAvatars, $this->zipName);
+            rename($dirAvatars . $this->zipName, $dirIncoming . $this->zipName);
+            $fi = new Importer();
+            $fi->import($dirIncoming . $this->zipName, $this->zipName);
+        } else {
+            $this->zipName = null;
+        }
     }
 
     private function getUserGroups(array $groupIds)
@@ -222,15 +318,16 @@ class ExportToCSV
             $cO[$i]['userPointDateTime'] = (array)$up->getUserPointEntryDateTime($r['upID']);
             $i++;
         }
+        if(sizeof($cO) == 0){
+            return null;
+        }
         return $cO;
     }
 
     private function saveUserAttributes($cols, $fileHandle)
     {
-        ini_set('xdebug.var_display_max_depth', 5);
-        ini_set('xdebug.var_display_max_children', 256);
-        ini_set('xdebug.var_display_max_data', 1024);
         $uaA = array();
+        $app = Core::make('app');
         if (!fputcsv($fileHandle, array(), $this->csvSettings['csv-delimiter'], $this->csvSettings['csv-enclosure'], $this->csvSettings['csv-escape'])) {
             return false;
         }
@@ -241,18 +338,29 @@ class ExportToCSV
             return false;
         }
         $query = 'select asID from AttributeSetKeys where akID = ?';
+        $s = array();
         foreach($cols as $c) {
-            $ua = UserAttributeKey::getByHandle($c);
+            $ua = UserKey::getByHandle($c);
+            $cat = $app->make(UserCategory::class)->getAttributeKeyByHandle($c);
+            $s['uakProfileDisplay'] = $cat->isAttributeKeyDisplayedOnProfile();
+            $s['uakProfileEdit'] = $cat->isAttributeKeyEditableOnProfile();
+            $s['uakProfileEditRequired'] = $cat->isAttributeKeyRequiredOnProfile();
+            $s['uakRegisterEdit'] = $cat->isAttributeKeyEditableOnRegister();
+            $s['uakRegisterEditRequired'] = $cat->isAttributeKeyRequiredOnRegister();
+            $s['uakMemberListDisplay'] = $cat->isAttributeKeyDisplayedOnMemberList();
+            $s['akIsSearchable'] = $cat->isAttributeKeySearchable();
+            $s['akIsInternal'] = $cat->isAttributeKeyInternal();
+            $s['akIsSearchableIndexed'] = $cat->isAttributeKeyContentIndexed();
+            $s['akName'] = $cat->getAttributeKeyDisplayName();
             if(is_object($ua)) {
                 $r = $this->db->executeQuery($query, array($ua->getAttributeKeyID()));
                 $res = $r->FetchRow();
                 if($res) {
-                    $ua->setID = $res['asID'];
+                    $s['setID'] = $res['asID'];
                 } else {
-                    $ua->setID = null;
+                    $s['setID'] = null;
                 }
-                dd($ua);
-                $uaA[] = Core::make('helper/json')->encode(get_object_vars($ua));
+                $uaA[$c] = Core::make('helper/json')->encode($s);
             }
         }
         foreach ($uaA as $a){
@@ -264,7 +372,7 @@ class ExportToCSV
 
     public function createUserExportCSVFile()
     {
-        $this->fileNameCleaned = str_replace($this->replace, $this->with, $this->fileName);
+        $this->fileNameCleaned = $this->getFilenameCleaned();
         $this->csvFileName = DIRNAME_APPLICATION . '/files/incoming/' . $this->fileNameCleaned . '.csv';
         return Tools::createFilePointer($this->csvFileName, 'wb');
     }
@@ -295,7 +403,7 @@ class ExportToCSV
         return $csvCount;
     }
 
-    public function createCSVFileObject()
+    public function createFileObject()
     {
         $fi = new Importer();
         return $fi->import($this->csvFileName, $this->fileName . '.csv');

@@ -10,14 +10,26 @@
         csvSettings = <?php echo $csvSettingsJSON ?>,
         warning_no_members = '<?php    echo t('Please select some Users to export.') ?>',
         user_search_url = '<?php    echo $this->action('search_users')?>',
-        base_url = '<?php    echo \URL::to('/') ?>';
+        base_url = '<?php    echo \URL::to('/') ?>',
+        select_all = '<?php echo t('Select All') ?>',
+        select_none = '<?php echo t('Select None') ?>';
 </script>
 <script>
     (function ($) {
         "use strict";
         jQuery(document).ready(function () {
+            $('input[name^="chooseAll_Columns"], input[name^="chooseAll_BaseColumns"]').bootstrapSwitch({
+                labelWidth: '10',
+                onText: select_all,
+                offText: select_none,
+                labelText: '',
+                state: false
+
+            });
+        });
+        jQuery(document).ready(function () {
             $('input[name^="chooseUserGroup"], input[name^="chooseColumns"], input[name^="chooseBaseColumns"], input[name="communityPoints"], input[name="userGroup"], input[name="adminInc"]').bootstrapSwitch({
-                labelWidth: '200'
+                labelWidth: '160'
 
             });
         });
@@ -32,20 +44,10 @@
 <div id="test"></div>
 <div class="clearfix">
     <div class="row">
-        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6">
-            <h3><?php echo t('Total records') ?>: <span id="numRecs">0</span></h3>
-        </div>
-        <div class="col-lg-6 col-md-6 col-sm-6 col-xs-6">
-            <h3><?php echo t('Number of records to export') ?>: <span id="numExportRecs">0</span></h3>
-            <button class="btn btn-primary" id="exportNow"><?php echo t('Export to CSV') ?></button>
-        </div>
-    </div>
-    <hr>
-    <div class="row">
         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
             <h3><?php echo t('CSV-Settings') ?></h3>
         </div>
-        <div class="col-lg-3 col-md-3 col-sm-3 col-xs-3">
+        <div class="col-lg-3 col-md-6 col-sm-6 col-xs-12">
             <?php
             echo $form->label('csv_filename', t('CSV-Filename (without extension)')) ?>
             <div class="input-group">
@@ -55,21 +57,21 @@
                 <span class="input-group-addon">.csv</span>
             </div>
         </div>
-        <div class="col-lg-3 col-md-3 col-sm-3 col-xs-3">
+        <div class="col-lg-3 col-md-6 col-sm-6 col-xs-12">
             <?php
             echo $form->label('csv-delimiter', t('CSV-Delimiter')) ?>
             <?php
             echo $form->text('csv-delimiter', $csvSettings['csv-delimiter'], array('pattern' => '.{1}'))
             ?>
         </div>
-        <div class="col-lg-3 col-md-3 col-sm-3 col-xs-3">
+        <div class="col-lg-3 col-md-6 col-sm-6 col-xs-12">
             <?php
             echo $form->label('csv-enclosure', t('CSV-Enclosure')) ?>
             <?php
             echo $form->text('csv-enclosure', $csvSettings['csv-enclosure'], array('pattern' => '.{1}'))
             ?>
         </div>
-        <div class="col-lg-3 col-md-3 col-sm-3 col-xs-3">
+        <div class="col-lg-3 col-md-6 col-sm-6 col-xs-12">
             <?php
             echo $form->label('csv-escape', t('CSV-Escape')) ?>
             <?php
@@ -79,43 +81,55 @@
     </div>
     <hr>
     <div class="row toesslab-attributes">
-        <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-            <h3><?php echo t('Basic User Attributes to export') ?></h3>
-            <div class="row">
-                <?php
-                $i = 0;
-                foreach ($columns['baseAttributes'] as $key => $ps) {
-                    $attrib = array(
-                        'data-label-text' => $ps['akName'],
-                        'data-size' => 'normal',
-                        'data-first' => ($i == 0),
-                        'data-handle' => $ps['akHandle']
-                    );
-                    if ($i % 3 == 0) {
-                        ?>
-                        <div class="col-lg-4 col-md-6 col-sm-6">
-                    <?php
-                    }
-                    if ($ps['akHandle'] == 'uID' || $ps['akHandle'] == 'uEmail' || $ps['akHandle'] == 'uName') {
-                        $attrib['readonly'] = 'true';
-                    }
-                    echo $form->checkbox('chooseBaseColumns[]', $ps['akHandle'], $csvExportSettings[$ps['akHandle']], $attrib);
-                    echo '<br>';
-                    $i++;
-                    if ($i % 3 == 0 && $i > 0) {
+        <h3><?php echo t('Basic User Attributes to export') ?>
+            <span style="display: block; float: right;">
+            <?php
+            echo $form->checkbox('chooseAll_BaseColumns', t('Select all'), $csvExportSettings['chooseAll_BaseColumns'], array('data-label-text' => t('Select all'), 'data-size' => 'normal', 'data-handle' => 'chooseAll_BaseColumns'));
+            ?>
+            </span>
+        </h3>
+        <div class="row">
+            <?php
+            $i = 0;
+            foreach ($columns['baseAttributes'] as $key => $ps) {
+                $attrib = array(
+                    'data-label-text' => $ps['akName'],
+                    'data-size' => 'normal',
+                    'data-first' => ($i == 0),
+                    'data-handle' => $ps['akHandle']
+                );
+                if ($i % 3 == 0) {
                     ?>
-                        </div>
-                    <?php
-                    }
+                    <div class="col-lg-4 col-md-6 col-sm-6">
+                <?php
                 }
+                if ($ps['akHandle'] == 'uID' || $ps['akHandle'] == 'uEmail' || $ps['akHandle'] == 'uName') {
+                    $attrib['readonly'] = 'true';
+                    $attrib['checked'] = true;
+      }
+                echo $form->checkbox('chooseBaseColumns[]', $ps['akHandle'], $csvExportSettings[$ps['akHandle']], $attrib);
+                echo '<br>';
+                $i++;
+                if ($i % 3 == 0 && $i > 0) {
                 ?>
-            </div>
+                    </div>
+                <?php
+                }
+            }
+            ?>
         </div>
     </div>
     <hr>
     <div class="row toesslab-attributes">
         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
-            <h3><?php echo t('User Attributes to export') ?></h3>
+            <h3>
+                <?php echo t('User Attributes to export') ?>
+                <span style="display: block; float: right;">
+                <?php
+                echo $form->checkbox('chooseAll_Columns', t('Select all'), $csvExportSettings['chooseAll_Columns'], array('data-label-text' => t('Select all'), 'data-size' => 'normal', 'data-handle' => 'chooseAll_Columns'));
+                ?>
+                </span>
+            </h3>
             <div class="row">
                 <?php
                 $i = 0;
@@ -158,7 +172,7 @@
     <div class="row">
         <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
             <button style="width: 100%;" id="save_export_settings"
-                    class="btn btn-primary"><?php echo t('Save Export Settings (Optionnal)') ?></button>
+                    class="btn btn-primary"><?php echo t('Save Export Settings (Optional)') ?></button>
         </div>
     </div>
     <hr>
@@ -258,7 +272,9 @@
     </div>
     <div class="ccm-dashboard-form-actions-wrapper">
         <div class="ccm-dashboard-form-actions">
-            <button id="Send" name="Send" class="pull-right btn btn-primary" type="submit"><?php    echo t('Save Template') ?></button>
+            <span style="color: white;"><?php echo t('Total records') ?>: <span id="numRecs">0</span></span><br>
+            <span style="color: white;"><?php echo t('Number of records to export') ?>: <span id="numExportRecs">0</span></span>
+            <button class="pull-right btn btn-primary" id="exportNow"><?php echo t('Export to CSV') ?></button>
         </div>
     </div>
 

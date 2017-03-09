@@ -1,7 +1,10 @@
 <?php
 namespace Concrete\Package\ToessLabExportMembers\Helper;
 use \Concrete\Core\Attribute\Key\Category as AttributeKeyCategory;
+use Concrete\Core\Attribute\Key\UserKey;
 use Concrete\Core\Attribute\Set;
+use Concrete\Core\Entity\Express\Entity;
+use Concrete\Core\Error\ErrorList\Error\ExceptionError;
 use UserAttributeKey;
 use Core;
 use Concrete\Core\User\Group\Group;
@@ -21,7 +24,7 @@ class Tools
      *
      * Gets all basic User Attributes
      *
-     * @param bool $includeAllProps includes all public properties for import
+     * @param bool $basic include All Props includes all public properties for import
      * @return array
      */
     public static function getUserAttributeColumns($basic = false)
@@ -31,8 +34,10 @@ class Tools
         $baseAttributes = array();
         $i = 0;
         foreach ($attr as $k => $a) {
-            $attributes[$i]['akHandle'] = $a->akHandle;
-            $attributes[$i]['akName'] = $a->akName;
+            $e = new Entity($a->getAttributeKeyHandle());
+            //$e =
+            $attributes[$i]['akHandle'] = $a->getAttributeKeyHandle();
+            $attributes[$i]['akName'] = $a->getAttributeKeyName();
             $i++;
         }
         $baseAttributes[] = array(
@@ -204,5 +209,10 @@ class Tools
         return $csvFile;
     }
 
+    public static function checkEmptyDir($dir) {
+        $files_in_directory = scandir($dir);
+        $items_count = count($files_in_directory);
+        return ($items_count <= 2);
+    }
 
 }

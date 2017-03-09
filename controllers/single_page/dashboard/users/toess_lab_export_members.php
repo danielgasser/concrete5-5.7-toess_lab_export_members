@@ -1,12 +1,14 @@
 <?php
 namespace Concrete\Package\ToessLabExportMembers\Controller\SinglePage\Dashboard\Users;
 
+use Concrete\Core\Url\Url;
 use Concrete\Package\ToessLabExportMembers\Helper\Tools;
 use Concrete\Package\ToessLabExportMembers\ImportExport\ExportToCSV;
 use Core;
 use Config;
 use Request;
 use \Concrete\Core\Page\Controller\DashboardPageController;
+use Symfony\Component\HttpFoundation\Response;
 
 class ToessLabExportMembers extends DashboardPageController
 {
@@ -26,12 +28,10 @@ class ToessLabExportMembers extends DashboardPageController
         $adminInc = (Request::getInstance()->get('adminInc') == 'true');
         $was_checked = (Request::getInstance()->get('was_checked') == NULL) ? array() : Request::getInstance()->get('was_checked');
         if (sizeof($group_id) == 0) {
-            echo Core::make('helper/json')->encode(NULL);
-            exit;
+            return Response::create(Core::make('helper/json')->encode(NULL));
         }
         $allUsers = Tools::changeUserGroup($group_id, $adminInc, $was_checked);
-        echo Core::make('helper/json')->encode(array('res' => $allUsers, 'res_count' => count($allUsers)));
-        exit;
+        return Response::create(Core::make('helper/json')->encode(array('res' => $allUsers, 'res_count' => count($allUsers))));
     }
 
     /**
@@ -44,8 +44,7 @@ class ToessLabExportMembers extends DashboardPageController
         foreach ($exportSettings as $e) {
             Config::save('toess_lab_export_members.export-settings.' . $e['handle'], ($e['val'] == 'true'));
         }
-        echo Core::make('helper/json')->encode(array('success' => t('Export Settings have been saved.')));
-        exit;
+        return Response::create(Core::make('helper/json')->encode(array('success' => t('Export Settings have been saved.'))));
     }
 
     /**
@@ -58,8 +57,7 @@ class ToessLabExportMembers extends DashboardPageController
         foreach ($csvSettings as $c) {
             if ($c['handle'] == 'csv_filename') {
                 if (strlen($c['val']) == 0) {
-                    echo Core::make('helper/json')->encode(array('error' => t('Please enter a valid CSV-Filename.')));
-                    exit;
+                    return Response::create(Core::make('helper/json')->encode(array('error' => t('Please enter a valid CSV-Filename.'))));
                 } else {
 
                     $s = strpos($c['val'], '.');
@@ -70,13 +68,11 @@ class ToessLabExportMembers extends DashboardPageController
                 }
             }
             if ($c['handle'] != 'csv_filename' && strlen($c['val']) > 1 || strlen($c['val']) < 1) {
-                echo Core::make('helper/json')->encode(array('error' => t('%s: Please enter 1 character only', $c['name'])));
-                exit;
+                return Response::create(Core::make('helper/json')->encode(array('error' => t('%s: Please enter 1 character only', $c['name']))));
             }
             Config::save('toess_lab_export_members.csv-settings.' . $c['handle'], $c['val']);
         }
-        echo Core::make('helper/json')->encode(Config::get('toess_lab_export_members.csv-settings'));
-        exit;
+        return Response::create(Core::make('helper/json')->encode(Config::get('toess_lab_export_members.csv-settings')));
     }
 
     /**
@@ -89,8 +85,7 @@ class ToessLabExportMembers extends DashboardPageController
         $query = 'select uID, uName, uEmail, uDateAdded, uNumLogins from Users where uName like concat("%", :param, "%") or uEmail like concat("%", :param, "%")';
         $r = $db->executeQuery($query, array('param' => $keyword));
         $res = $r->fetchAll(\PDO::FETCH_OBJ);
-        echo Core::make('helper/json')->encode(array('res' => $res, 'res_count' => count($res)));
-        exit;
+        return Response::create(Core::make('helper/json')->encode(array('res' => $res, 'res_count' => count($res))));
     }
 
     public function export_to_csv()
@@ -102,35 +97,28 @@ class ToessLabExportMembers extends DashboardPageController
         $postArgs['userPoints'] = Request::getInstance()->get('communityPoints');
         $postArgs['usersGroups'] = Request::getInstance()->get('usersGroups');
         if (strlen($postArgs['fileName']) == 0) {
-            echo Core::make('helper/json')->encode(array('error' => t('Please enter a CSV-Filename.')));
-            exit;
+            return Response::create(Core::make('helper/json')->encode(array('error' => t('Please enter a CSV-Filename.'))));
         }
         if (sizeof($postArgs['ids']) == 0) {
-            echo Core::make('helper/json')->encode(array('error' => t('Please select some Users to export.')));
-            exit;
+            return Response::create(Core::make('helper/json')->encode(array('error' => t('Please select some Users to export.'))));
         }
         if (sizeof($postArgs['baseColumns']) == 0) {
-            echo Core::make('helper/json')->encode(array('error' => t('You have to select at least one Basic User Attribute.')));
-            exit;
+            return Response::create(Core::make('helper/json')->encode(array('error' => t('You have to select at least one Basic User Attribute.'))));
         }
 
         $export = new ExportToCSV($postArgs);
         if(!$export->getUsers()){
-            echo Core::make('helper/json')->encode(array('error' => t('No Users found.')));
-            exit;
+            return Response::create(Core::make('helper/json')->encode(array('error' => t('No Users found.'))));
         }
         if(!$export->createUserExportCSVFile()) {
-            echo Core::make('helper/json')->encode(array('error' => t('File \'%s\' could not be created.', $export->getCSVFilename())));
-            exit;
+            return Response::create(Core::make('helper/json')->encode(array('error' => t('File \'%s\' could not be created.', $export->getCSVFilename()))));
         }
         $write = $export->writeToCSVFile();
-        $export->createCSVFileObject();
+        $export->createFileObject();
         if(is_array($write)) {
-            echo Core::make('helper/json')->encode(array('error' => $write));
-            exit;
+            return Response::create(Core::make('helper/json')->encode(array('error' => $write)));
         } else {
-            echo Core::make('helper/json')->encode(array('success' => t('%s record(s) have been saved. The file \'%s\' has been added to your <a href="%s">File Manager</a>', $write, $export->getFilenameCleaned() . '.csv', \URL::to('/dashboard/files/search'))));
-            exit;
+            return Response::create(Core::make('helper/json')->encode(array('success' => t('%s record(s) have been saved. The files \'%s\' and \'%s\' have been added to your <a href="%s">File Manager</a>', $write, $export->getFilenameCleaned() . '.csv', $export->getZipFilename(), \URL::to('/dashboard/files/search')))));
         }
     }
 
@@ -141,5 +129,4 @@ class ToessLabExportMembers extends DashboardPageController
         $this->requireAsset('jquery-ui');
         parent::on_start();
     }
-
 }

@@ -30,14 +30,19 @@ class Controller extends Package {
         return t("Export/Import Site members to CSV");
     }
 
-
     public function install()
     {
         $pkg = parent::install();
         $this->installOrUpgrade($pkg);
         $this->setCsvSettings();
+        $this->setExtension();
     }
 
+    public function uninstall()
+    {
+        parent::uninstall();
+        $this->deleteExtension();
+    }
     public function on_start()
     {
         $app = Core::make('app');
@@ -130,5 +135,23 @@ class Controller extends Package {
         return $sp;
     }
 
+    private function setExtension()
+    {
+        $exts = explode(';', Config::get('concrete.upload.extensions'));
+        $key = array_search('*.zip', $exts);
+        if ($key === false) {
+            $exts[] = '*.zip';
+        }
+        Config::save('concrete.upload.extensions', implode(';', $exts));
+    }
 
+    private function deleteExtension()
+    {
+        $exts = explode(';', Config::get('concrete.upload.extensions'));
+        $key = array_search('*.zip', $exts);
+        if ($key !== false) {
+            unset($exts[$key]);
+        }
+        Config::save('concrete.upload.extensions', implode(';', $exts));
+    }
 }

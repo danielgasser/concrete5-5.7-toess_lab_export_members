@@ -110,8 +110,6 @@
                     csv_filename: $('#csv_filename').val()
                 },
                 success: function (data) {
-                    $('#test').html(data);
-                    return false;
                     var dats = $.parseJSON(data);
                     if(dats.hasOwnProperty('error')) {
                         setMessages(dats.error, true);
@@ -129,6 +127,11 @@
                 }
             });
             $('#numExportRecs').html(count);
+            if (count === 0) {
+                $('#exportNow').prop('disabled', true);
+            } else {
+                $('#exportNow').prop('disabled', false);
+            }
         },
         getUsers = function (prop, order_by) {
             var user_group = [],
@@ -221,11 +224,27 @@
             if (allStates === 0) {
                 $('input[name^="chooseUserGroup"][data-first="1"]').bootstrapSwitch('state', true);
             }
+        },
+        checkAllStates = function (toCheck, toSwitch) {
+            var counter = 0;
+            $.each($(toCheck), function (i, n) {
+                if ($(n).is(':checked')) {
+                    counter += 1;
+                }
+            });
+            if (counter === $(toCheck).length) {
+                $(toSwitch).bootstrapSwitch('state', true);
+            } else {
+                $(toSwitch).bootstrapSwitch('state', false);
+            }
         };
 
     $(document).ready(function () {
         getUsers('uName', 'asc');
         $('.bootstrap-switch-id-adminInc').hide();
+        $('#exportNow').prop('disabled', true);
+        checkAllStates('[id^="chooseBaseColumns_"]', '#chooseAll_BaseColumns')
+        checkAllStates('[id^="chooseColumns_"]', '#chooseAll_Columns')
     });
     $(document).on('change', '[name="uID[]"]', function () {
         if (!$(this).is(':checked')) {
@@ -377,5 +396,17 @@
         }
         checkStates();
         getUsers(prop, by);
+    });
+    $(document).on('switchChange.bootstrapSwitch', 'input[name^="chooseAll_"]', function (event, state) {
+        var id = $(this).attr('name').split('_')[1];
+        $('[name^="choose' + id + '"]').bootstrapSwitch('state', state);
+    });
+    $(document).on('switchChange.bootstrapSwitch', 'input[id^="chooseBaseColumns_"]', function (event, state) {
+        var id = $(this).attr('id').split('_')[0];
+        checkAllStates('[id^="' + id + '_"]', '[name="chooseAll_BaseColumns"]')
+    });
+    $(document).on('switchChange.bootstrapSwitch', 'input[id^="chooseColumns_"]', function (event, state) {
+        var id = $(this).attr('id').split('_')[0];
+        checkAllStates('[id^="' + id + '_"]', '#chooseAll_Columns')
     });
 }(jQuery));

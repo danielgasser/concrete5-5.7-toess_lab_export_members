@@ -62,7 +62,7 @@ class ImportFromCSV
     {
         $csvFile = file(DIR_BASE . $this->cSVFileObject->getRelativePath());
         $app = Core::make('app');
-        $ui = $app->make('Concrete\Core\User\UserInfoFactory');
+        $ui = $app->make('Concrete\Core\User\UserInfo');
         $data = $csvFile;
         unset($data[0]);
         $dh = Core::make('helper/date');
