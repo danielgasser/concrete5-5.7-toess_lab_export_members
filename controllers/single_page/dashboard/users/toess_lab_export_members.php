@@ -90,11 +90,11 @@ class ToessLabExportMembers extends DashboardPageController
 
     public function get_progress_queue()
     {
-        $session = @fopen(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.txt', 'r');
+        $session = @fopen(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.json', 'r');
         if ($session === false)
-            return Response::create(Core::make('helper/json')->encode(null));
+            return Response::create(null);
         $progress = fgets($session);
-        return Response::create(Core::make('helper/json')->encode($progress));
+        return Response::create($progress);
     }
 
     public function export_to_csv()

@@ -146,7 +146,7 @@ class ExportToCSV
     public function queueUserIds()
     {
         $res = false;
-        unlink(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.txt');
+        //unlink(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.txt');
         $this->userQueue = Queue::get('userQueue');
         $db = Core::make('database');
         $queryIDs = implode(', ', $this->userIds);
@@ -168,10 +168,12 @@ class ExportToCSV
     {
         $app = Core::make('app');
         //$session = Tools::createFilePointer(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.txt', 'wb');
-        $session = fopen(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.txt', 'a+');
-        fwrite($session, '[');
+        $session = fopen(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.json', 'w+');
+       // dd($session);
+     //   fwrite($session, '[');
         $db = Core::make('database');
         $userInfoObjects = array();
+        $time = new \DateTime();
         foreach ($msg as $k => $m) {
             $id = $m->body;
             $query = 'select ' . implode(', ', $this->baseColumns) . ' from Users where uID = ' . $id . ' order by uID asc';
@@ -205,15 +207,13 @@ class ExportToCSV
                 $this->columns[] = 'communityPoints';
             }
             $this->zipUserAvatars();
-            $time = new \DateTime();
-            fwrite($session, ['current' => $this->i, 'total' => count($this->userIds), 'time' => $time->getTimestamp()]);
-            fwrite($session, ',' . "\n");
 
             $this->userQueue->deleteMessage($m);
             $this->i++;
             //$this->progress->next();
+            fwrite($session, json_encode(['current' => $this->i, 'total' => count($this->userIds), 'time' => $time->getTimestamp()]));
         }
-        fwrite($session, ']');
+       // fwrite($session, ']');
 
         //$this->progress->finish();
 

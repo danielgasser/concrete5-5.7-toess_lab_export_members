@@ -103,22 +103,31 @@
             console.log(chain)
         },
         checkProgress = function (counter, chain) {
-        console.log(chain);
+            console.log(chain);
             timer = setInterval(function () {
                 for(i = 0; i < counter; i += 1) {
                     i += 1;
                     if (isNaN(i) || i >= counter || counter == 0 || session_data == 'null') {
                             clearInterval(timer);
+                        return false;
                     }
                     $.ajax({
                         method: 'GET',
                         url: window.session_queue_url,
                         success: function (data) {
-                            if (isNaN(i) || i >= counter || counter == 0 || session_data == 'null') {
+                            var check = $.parseJSON(data);
+                            if(typeof check == 'object')
+                            {
+                                if (isNaN(i) || i > counter || counter == 0 || session_data == 'null' || data == 'false') {
+                                    clearInterval(timer);
+                                    return false;
+                                }
+                                session_data = data;
+                                console.log(data)
+                            } else {
                                 clearInterval(timer);
+                                return false;
                             }
-                            session_data = data;
-                            console.log(data)
                         }
                     });
 
