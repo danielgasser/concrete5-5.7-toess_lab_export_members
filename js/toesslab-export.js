@@ -99,26 +99,35 @@
         session_data,
         i,
         timer,
-        checkProgress = function (counter) {
-            //for(i = 0; i < counter; i += 1) {
-                timer = setInterval(function () {
+        getProgress = function (chain) {
+            console.log(chain)
+        },
+        checkProgress = function (counter, chain) {
+        console.log(chain);
+            timer = setInterval(function () {
+                for(i = 0; i < counter; i += 1) {
+                    i += 1;
+                    if (isNaN(i) || i >= counter || counter == 0 || session_data == 'null') {
+                            clearInterval(timer);
+                    }
                     $.ajax({
-                        async: false,
                         method: 'GET',
                         url: window.session_queue_url,
                         success: function (data) {
-                            i += 1;
+                            if (isNaN(i) || i >= counter || counter == 0 || session_data == 'null') {
+                                clearInterval(timer);
+                            }
                             session_data = data;
                             console.log(data)
                         }
                     });
-                }, 1000)
-            if (isNaN(i) || i >= counter || counter == 0 || session_data == 'null') {
-                clearInterval(timer);
-            }
-            //}
+
+                }
+            }, 1000)
+            //checkProgress(counter);
+            return $.when('progress');
         },
-        exportUsers = function (ids, baseCols, cols, cp, ug) {
+        exportUsers = function (ids, baseCols, cols, cp, ug, chain) {
             var form = $('#exportUserForm'),
                 data = {
                     uIds: JSON.stringify(ids),
@@ -165,7 +174,8 @@
                     }
                 }
             });
-
+            //checkProgress(1)
+            return $.when(chain + 'export');
             //form.submit();
         },
         checkChecked = function () {
@@ -290,7 +300,7 @@
 
 
     $(document).bind("ajaxSend", function(e){
-        checkProgress(parseInt($('#numExportRecs').text(), 10));
+        //checkProgress(parseInt($('#numExportRecs').text(), 10));
     });
     $(document).bind("ajaxComplete", function(e){
         console.log(e)
@@ -336,6 +346,8 @@
         e.preventDefault();
         var uIDs,
             basecColumns,
+            request,
+            chained,
             columns,
             usersGroups = $('[name="userGroup"]').is(':checked'),
             communityPoints = $('[name="communityPoints"]').is(':checked');
@@ -359,8 +371,12 @@
             }
         }).get();
         //checkProgress(uIDs.length);
+        (function () {
+            chained = $.when(checkProgress(uIDs.length, chained)
+                .then(exportUsers(uIDs, basecColumns, columns, communityPoints, usersGroups, chained)))
 
-        exportUsers(uIDs, basecColumns, columns, communityPoints, usersGroups);
+        }());
+console.log(chained)
     });
     $(document).on('keyup', '#user_search', function (e) {
         e.preventDefault();

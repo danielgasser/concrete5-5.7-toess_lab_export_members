@@ -146,6 +146,7 @@ class ExportToCSV
     public function queueUserIds()
     {
         $res = false;
+        unlink(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.txt');
         $this->userQueue = Queue::get('userQueue');
         $db = Core::make('database');
         $queryIDs = implode(', ', $this->userIds);
@@ -167,7 +168,7 @@ class ExportToCSV
     {
         $app = Core::make('app');
         //$session = Tools::createFilePointer(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.txt', 'wb');
-        $session = fopen(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.txt', 'w+');
+        $session = fopen(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.txt', 'a+');
         fwrite($session, '[');
         $db = Core::make('database');
         $userInfoObjects = array();
@@ -205,14 +206,17 @@ class ExportToCSV
             }
             $this->zipUserAvatars();
             $time = new \DateTime();
-            fwrite($session, json_encode(['current' => $this->i, 'total' => count($this->userIds), 'time' => $time->getTimestamp()]));
+            fwrite($session, ['current' => $this->i, 'total' => count($this->userIds), 'time' => $time->getTimestamp()]);
+            fwrite($session, ',' . "\n");
 
             $this->userQueue->deleteMessage($m);
             $this->i++;
             //$this->progress->next();
         }
+        fwrite($session, ']');
+
         //$this->progress->finish();
-        unlink(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.txt');
+
         if(sizeof($this->results) == 0) {
             return false;
         }
