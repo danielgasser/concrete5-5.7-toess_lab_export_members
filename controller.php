@@ -9,6 +9,7 @@ use Core;
 use Asset;
 use Config;
 use Concrete\Package\ToessLabExportMembers\Help\HelpServiceProvider;
+use Zend\ProgressBar\ProgressBar;
 
 class Controller extends Package {
 
@@ -45,6 +46,7 @@ class Controller extends Package {
     }
     public function on_start()
     {
+        require_once $this->getPackagePath() . '/src/vendor/autoload.php';
         $app = Core::make('app');
         $pkg = $this;
         $al = AssetList::getInstance();
@@ -72,6 +74,12 @@ class Controller extends Package {
         $al->register(
             'javascript', 'bootstrapswitch', 'js/libs/bootstrap_switch/bootstrap-switch.min.js', array('position' => Asset::ASSET_POSITION_FOOTER), $pkg
         );
+        $al->register(
+            'javascript', 'zend_progress', 'js/zend_progress.js', array('position' => Asset::ASSET_POSITION_HEADER), $pkg
+        );
+        $al->registerGroup('zend_progress', array(
+            array('javascript', 'zend_progress'),
+        ));
         $al->registerGroup('toess_lab_export_members', array(
             array('javascript', 'toess_lab_export_members'),
             array('css', 'toess_lab_export_members'),

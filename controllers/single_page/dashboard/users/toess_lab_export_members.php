@@ -88,26 +88,48 @@ class ToessLabExportMembers extends DashboardPageController
         return Response::create(Core::make('helper/json')->encode(array('res' => $res, 'res_count' => count($res))));
     }
 
+    public function get_progress_queue()
+    {
+        $session = @fopen(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.txt', 'r');
+        if ($session === false)
+            return Response::create(Core::make('helper/json')->encode(null));
+        $progress = fgets($session);
+        return Response::create(Core::make('helper/json')->encode($progress));
+    }
+
     public function export_to_csv()
     {
-        $postArgs['ids'] = Request::getInstance()->get('ids');
-        $postArgs['fileName'] = Request::getInstance()->get('csv_filename');
-        $postArgs['baseColumns'] = Request::getInstance()->get('baseColumns');
-        $postArgs['columns'] = Request::getInstance()->get('columns');
-        $postArgs['userPoints'] = Request::getInstance()->get('communityPoints');
-        $postArgs['usersGroups'] = Request::getInstance()->get('usersGroups');
+        $postArgs['ids'] = Core::make('helper/json')->decode($this->post('h_uIds'));
+        $postArgs['fileName'] = $this->post('h_csv_filename');
+        $postArgs['baseColumns'] = Core::make('helper/json')->decode($this->post('h_uBaseCols'));
+        $postArgs['columns'] = Core::make('helper/json')->decode($this->post('h_uCols'));
+        $postArgs['userPoints'] = $this->post('h_communityPoints');
+        $postArgs['usersGroups'] = $this->post('h_usersGroups');
+        $this->set('uIds', $postArgs['ids']);
+        $this->set('csv_filename', $postArgs['fileName']);
+        $this->set('uBaseCols', $postArgs['baseColumns']);
+        $this->set('uCols', $postArgs['columns']);
+        $this->set('communityPoints', $postArgs['userPoints']);
+        $this->set('usersGroups', $postArgs['usersGroups']);
+        $this->set('updateBar', '');
         if (strlen($postArgs['fileName']) == 0) {
-            return Response::create(Core::make('helper/json')->encode(array('error' => t('Please enter a CSV-Filename.'))));
+            $this->error->add(t('Please enter a CSV-Filename.'));
+            //return Response::create(Core::make('helper/json')->encode(array('error' => t('Please enter a CSV-Filename.'))));
         }
         if (sizeof($postArgs['ids']) == 0) {
-            return Response::create(Core::make('helper/json')->encode(array('error' => t('Please select some Users to export.'))));
+            $this->error->add(t('Please select some Users to export.'));
+            //return Response::create(Core::make('helper/json')->encode(array('error' => t('Please select some Users to export.'))));
         }
         if (sizeof($postArgs['baseColumns']) == 0) {
-            return Response::create(Core::make('helper/json')->encode(array('error' => t('You have to select at least one Basic User Attribute.'))));
+            $this->error->add(t('You have to select at least one Basic User Attribute.'));
+            //return Response::create(Core::make('helper/json')->encode(array('error' => t('You have to select at least one Basic User Attribute.'))));
         }
-
+        if ($this->error->has()) {
+            $this->view();
+            return false;
+        }
         $export = new ExportToCSV($postArgs);
-        if(!$export->getUsers()){
+        if(!$export->queueUserIds()){
             return Response::create(Core::make('helper/json')->encode(array('error' => t('No Users found.'))));
         }
         if(!$export->createUserExportCSVFile()) {
@@ -127,6 +149,7 @@ class ToessLabExportMembers extends DashboardPageController
         $this->requireAsset('toess_lab_export_members');
         $this->requireAsset('bootstrapswitch');
         $this->requireAsset('jquery-ui');
+        $this->requireAsset('zend_progress');
         parent::on_start();
     }
 }

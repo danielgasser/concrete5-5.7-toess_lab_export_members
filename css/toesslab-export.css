@@ -6,3 +6,27 @@
 .ccm-dashboard-form-actions-wrapper {
     z-index: 560 !important;
 }
+
+#long-running-process {
+    position: absolute;
+    left: -100px;
+    top: -100px;
+
+    width: 1px;
+    height: 1px;
+}
+
+#zend-progressbar-container {
+    width: 100px;
+    height: 30px;
+
+    border: 1px solid #000000;
+    background-color: #ffffff;
+}
+
+#zend-progressbar-done {
+    width: 0;
+    height: 30px;
+
+    background-color: #000000;
+}

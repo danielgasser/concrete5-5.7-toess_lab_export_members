@@ -56,7 +56,7 @@
                 }
             })
         },
-        progressed = function () {
+    progressed = function () {
             var xhr = new window.XMLHttpRequest();
             xhr.upload.addEventListener("progress", function(evt){
                 if (evt.lengthComputable) {
@@ -96,18 +96,65 @@
             csvMessage
                 .show();
         },
+        session_data,
+        i,
+        timer,
+        checkProgress = function (counter) {
+            //for(i = 0; i < counter; i += 1) {
+                timer = setInterval(function () {
+                    $.ajax({
+                        async: false,
+                        method: 'GET',
+                        url: window.session_queue_url,
+                        success: function (data) {
+                            i += 1;
+                            session_data = data;
+                            console.log(data)
+                        }
+                    });
+                }, 1000)
+            if (isNaN(i) || i >= counter || counter == 0 || session_data == 'null') {
+                clearInterval(timer);
+            }
+            //}
+        },
         exportUsers = function (ids, baseCols, cols, cp, ug) {
-            $.ajax({
-             //   xhr: progressed(),
-                method: 'POST',
-                url: window.user_export_url,
-                data: {
-                    ids: ids,
-                    baseColumns: baseCols,
-                    columns: cols,
+            var form = $('#exportUserForm'),
+                data = {
+                    uIds: JSON.stringify(ids),
+                    uBaseCols: JSON.stringify(baseCols),
+                    uCols: JSON.stringify(cols),
                     usersGroups: ug,
                     communityPoints: cp,
                     csv_filename: $('#csv_filename').val()
+                };
+            /*
+            form[0].reset();
+            $.each(data, function (name, value) {
+                $('<input>')
+                    .attr('name', 'h_' + name)
+                    .attr('value', value)
+                    .appendTo(form);
+            });
+            //checkProgress(ids.length);
+            */
+            $.ajax({
+                beforeSend: function(e){
+                    console.log('go', e)
+                },
+                method: 'POST',
+                url: window.user_export_url,
+
+                 data: {
+                     h_uIds: data.uIds,
+                     h_uBaseCols: data.uBaseCols,
+                     h_uCols: data.uCols,
+                     h_usersGroups: ug,
+                     h_communityPoints: cp,
+                     h_csv_filename: $('#csv_filename').val()
+                 },
+                complete: function (e) {
+                    console.log(e);
                 },
                 success: function (data) {
                     var dats = $.parseJSON(data);
@@ -117,7 +164,9 @@
                         setMessages(dats.success, false);
                     }
                 }
-            })
+            });
+
+            //form.submit();
         },
         checkChecked = function () {
             var count = 0;
@@ -239,6 +288,14 @@
             }
         };
 
+
+    $(document).bind("ajaxSend", function(e){
+        checkProgress(parseInt($('#numExportRecs').text(), 10));
+    });
+    $(document).bind("ajaxComplete", function(e){
+        console.log(e)
+    });
+
     $(document).ready(function () {
         getUsers('uName', 'asc');
         $('.bootstrap-switch-id-adminInc').hide();
@@ -275,7 +332,8 @@
         }).get();
         saveExportSettings(csvSet);
     });
-    $(document).on('click', '#exportNow', function () {
+    $(document).on('click', '#exportNow', function (e) {
+        e.preventDefault();
         var uIDs,
             basecColumns,
             columns,
@@ -300,6 +358,8 @@
                 return $(n).attr('data-handle');
             }
         }).get();
+        //checkProgress(uIDs.length);
+
         exportUsers(uIDs, basecColumns, columns, communityPoints, usersGroups);
     });
     $(document).on('keyup', '#user_search', function (e) {
