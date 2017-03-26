@@ -46,7 +46,6 @@ class Controller extends Package {
     }
     public function on_start()
     {
-        require_once $this->getPackagePath() . '/src/vendor/autoload.php';
         $app = Core::make('app');
         $pkg = $this;
         $al = AssetList::getInstance();
@@ -72,8 +71,7 @@ class Controller extends Package {
             'css', 'bootstrapswitch', 'js/libs/bootstrap_switch/bootstrap-switch.min.css', array('position' => Asset::ASSET_POSITION_HEADER), $pkg
         );
         $al->register(
-            'javascript', 'bootstrapswitch', 'js/libs/bootstrap_switch/bootstrap-switch.min.js', array('position' => Asset::ASSET_POSITION_FOOTER), $pkg
-        );
+            'javascript', 'bootstrapswitch', 'js/libs/bootstrap_switch/bootstrap-switch.min.js', array('position' => Asset::ASSET_POSITION_FOOTER), $pkg);
         $al->register(
             'javascript', 'zend_progress', 'js/zend_progress.js', array('position' => Asset::ASSET_POSITION_HEADER), $pkg
         );

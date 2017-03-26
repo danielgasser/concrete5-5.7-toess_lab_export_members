@@ -56,24 +56,6 @@
                 }
             })
         },
-    progressed = function () {
-            var xhr = new window.XMLHttpRequest();
-            xhr.upload.addEventListener("progress", function(evt){
-                if (evt.lengthComputable) {
-                    var percentComplete = evt.loaded / evt.total;
-                    //Do something with upload progress
-                    console.log(percentComplete);
-                }
-            }, false);
-            xhr.addEventListener("progress", function(evt){
-                if (evt.lengthComputable) {
-                    var percentComplete = evt.loaded / evt.total;
-                    //Do something with download progress
-                    console.log(percentComplete);
-                }
-            }, false);
-            return xhr;
-        },
         setMessages = function (msg, error) {
             if ($('#dialog_csv_error').length === 0) {
                 $('.clearfix').prepend('<div class="alert alert-info" id="dialog_csv_error" style="display: none">' +
@@ -96,49 +78,51 @@
             csvMessage
                 .show();
         },
-        session_data,
-        i,
         timer,
-        getProgress = function (chain) {
-            console.log(chain)
-        },
-        checkProgress = function (counter, chain) {
-            console.log(chain);
-            timer = setInterval(function () {
-                for(i = 0; i < counter; i += 1) {
-                    i += 1;
-                    if (isNaN(i) || i >= counter || counter == 0 || session_data == 'null') {
-                            clearInterval(timer);
+        elapsed = ' ',
+        checkProgress = function (time) {
+            $.ajax({
+                url: '/application/files/incoming/queue.json',
+                method: 'GET',
+                success: function (data) {
+                    console.log(data)
+                    var current = parseInt(data.current, 10),
+                        total = parseInt(data.total, 10),
+                        progress = parseInt(data.current / data.total * 100, 10),
+                        sign = '%';
+                    if (isNaN(current)) {
+                        current = '. ';
+                        elapsed += current;
+                        $('#progressbar-message').html(data.message);
+                        progress = parseInt($('#progressbar-progress').html());
+                        if (progress <= 99) {
+                            progress = 99;
+                        }
+                        else if (progress >= 99 || isNaN(progress)) {
+                            progress = 99;
+                        }
+                        $('#progressbar-progress').css({background: '#2485c4', color: '#fff', width: progress + '%', textAlign: 'center'}).html(elapsed);
+                    } else {
+                        elapsed = (data.time - parseInt(time.getTime() / 1000, 10));
+                        $('#progressbar-message').html(data.message + ':<br>' + data.current + ' of ' + data.total + '.<br>Time: ' + elapsed + ' seconds');
+                        $('#progressbar-progress-percent').html(progress + sign);
+                        elapsed = '';
+                    }
+                    $('#progressbar-progress').css({background: '#2485c4', color: '#fff', width: progress + '%'});
+                    if (current >= total) {
                         return false;
                     }
-                    $.ajax({
-                        method: 'GET',
-                        url: window.session_queue_url,
-                        success: function (data) {
-                            var check = $.parseJSON(data);
-                            if(typeof check == 'object')
-                            {
-                                if (isNaN(i) || i > counter || counter == 0 || session_data == 'null' || data == 'false') {
-                                    clearInterval(timer);
-                                    return false;
-                                }
-                                session_data = data;
-                                console.log(data)
-                            } else {
-                                clearInterval(timer);
-                                return false;
-                            }
-                        }
-                    });
-
+                    return [data, elapsed];
+                },
+                error: function (data) {
+                    if (data.status == 404) {
+                        clearInterval(timer);
+                    }
                 }
-            }, 1000)
-            //checkProgress(counter);
-            return $.when('progress');
+            });
         },
-        exportUsers = function (ids, baseCols, cols, cp, ug, chain) {
-            var form = $('#exportUserForm'),
-                data = {
+        exportUsers = function (ids, baseCols, cols, cp, ug) {
+            var data = {
                     uIds: JSON.stringify(ids),
                     uBaseCols: JSON.stringify(baseCols),
                     uCols: JSON.stringify(cols),
@@ -146,46 +130,53 @@
                     communityPoints: cp,
                     csv_filename: $('#csv_filename').val()
                 };
-            /*
-            form[0].reset();
-            $.each(data, function (name, value) {
-                $('<input>')
-                    .attr('name', 'h_' + name)
-                    .attr('value', value)
-                    .appendTo(form);
-            });
-            //checkProgress(ids.length);
-            */
             $.ajax({
                 beforeSend: function(e){
-                    console.log('go', e)
+                    $('#progressbar-container')
+                        .dialog({
+                            modal: true,
+                            width: 600,
+                            height: 240,
+                            backdrop: 'static',
+                            keyboard: 'false',
+                            title: 'Export'});
+                    $('#exportNow').prop('disabled', true);
                 },
                 method: 'POST',
                 url: window.user_export_url,
 
-                 data: {
+                data: {
                      h_uIds: data.uIds,
                      h_uBaseCols: data.uBaseCols,
                      h_uCols: data.uCols,
                      h_usersGroups: ug,
                      h_communityPoints: cp,
                      h_csv_filename: $('#csv_filename').val()
-                 },
-                complete: function (e) {
-                    console.log(e);
+                },
+                error: function(data) {
+                  console.log('error', data)
+                    clearInterval(timer);
                 },
                 success: function (data) {
+                    $('#progressbar-container').dialog('close');
+                    $('#progressbar-message').html('');
+                    $('#progressbar-progress').html('').css({width: 0});
+                    $.each($('input[name="uID[]"]'), function (i, n) {
+                        $(n).attr('checked', false);
+                    });
+                    $('[data-search-checkbox="select-all"]').attr('checked', false);
+                    checkChecked();
                     var dats = $.parseJSON(data);
+                    window.scrollTo(0, 0);
                     if(dats.hasOwnProperty('error')) {
                         setMessages(dats.error, true);
                     } else {
                         setMessages(dats.success, false);
                     }
+                    clearInterval(timer);
+                    return data;
                 }
             });
-            //checkProgress(1)
-            return $.when(chain + 'export');
-            //form.submit();
         },
         checkChecked = function () {
             var count = 0;
@@ -203,8 +194,8 @@
         },
         getUsers = function (prop, order_by) {
             var user_group = [],
-                checked = [],
                 user_list,
+                checked = [],
                 user_list_body = $('#userList'),
                 prop_object = $('[data-prop="' + prop + '"]');
             $.each($('input[name^="chooseUserGroup"]'), function (i, n) {
@@ -294,6 +285,7 @@
             }
         },
         checkAllStates = function (toCheck, toSwitch) {
+
             var counter = 0;
             $.each($(toCheck), function (i, n) {
                 if ($(n).is(':checked')) {
@@ -308,18 +300,11 @@
         };
 
 
-    $(document).bind("ajaxSend", function(e){
-        //checkProgress(parseInt($('#numExportRecs').text(), 10));
-    });
-    $(document).bind("ajaxComplete", function(e){
-        console.log(e)
-    });
-
     $(document).ready(function () {
         getUsers('uName', 'asc');
         $('.bootstrap-switch-id-adminInc').hide();
         $('#exportNow').prop('disabled', true);
-        checkAllStates('[id^="chooseBaseColumns_"]', '#chooseAll_BaseColumns')
+        checkAllStates('[id$="choose"]', '#chooseAll_BaseColumns')
         checkAllStates('[id^="chooseColumns_"]', '#chooseAll_Columns')
     });
     $(document).on('change', '[name="uID[]"]', function () {
@@ -355,8 +340,10 @@
         e.preventDefault();
         var uIDs,
             basecColumns,
-            request,
-            chained,
+            i = 0,
+            data1,
+            data,
+            time = new Date(),
             columns,
             usersGroups = $('[name="userGroup"]').is(':checked'),
             communityPoints = $('[name="communityPoints"]').is(':checked');
@@ -379,13 +366,20 @@
                 return $(n).attr('data-handle');
             }
         }).get();
-        //checkProgress(uIDs.length);
-        (function () {
-            chained = $.when(checkProgress(uIDs.length, chained)
-                .then(exportUsers(uIDs, basecColumns, columns, communityPoints, usersGroups, chained)))
+        $.when(
+        data1 = exportUsers(uIDs, basecColumns, columns, communityPoints, usersGroups),
 
-        }());
-console.log(chained)
+            timer = setInterval(function () {
+                    if (i >= uIDs.length) {
+                        clearInterval(timer);
+                        return false;
+                    }
+                    data = checkProgress(time);
+                    i += 1;
+                }, 1000)
+        ).then(function (data1, data) {
+            console.log(data1, data);
+        });
     });
     $(document).on('keyup', '#user_search', function (e) {
         e.preventDefault();

@@ -19,7 +19,7 @@
 <script>
 </script>
 <?php
-var_dump($_SESSION['session_progressbar'])
+echo xdebug_get_profiler_filename();
 ?>
 <script>
     (function ($) {
@@ -46,8 +46,8 @@ var_dump($_SESSION['session_progressbar'])
 <div id="zend-progressbar-container">
     <div id="zend-progressbar-done"></div>
 </div>
-
-<iframe src="<?php echo \URL::to('/dashboard/users/toess_lab_export_members/export_to_csv')?>" id="long-running-process"></iframe>
+<?php
+?>
 <div class="alert alert-info" id="dialog_csv_error" style="display: none">
     <button type="button" class="close" data-dismiss="alert">×</button>
     <div id="dialog_csv_error_msg"></div>

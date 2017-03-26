@@ -105,28 +105,14 @@ class ToessLabExportMembers extends DashboardPageController
         $postArgs['columns'] = Core::make('helper/json')->decode($this->post('h_uCols'));
         $postArgs['userPoints'] = $this->post('h_communityPoints');
         $postArgs['usersGroups'] = $this->post('h_usersGroups');
-        $this->set('uIds', $postArgs['ids']);
-        $this->set('csv_filename', $postArgs['fileName']);
-        $this->set('uBaseCols', $postArgs['baseColumns']);
-        $this->set('uCols', $postArgs['columns']);
-        $this->set('communityPoints', $postArgs['userPoints']);
-        $this->set('usersGroups', $postArgs['usersGroups']);
-        $this->set('updateBar', '');
         if (strlen($postArgs['fileName']) == 0) {
-            $this->error->add(t('Please enter a CSV-Filename.'));
-            //return Response::create(Core::make('helper/json')->encode(array('error' => t('Please enter a CSV-Filename.'))));
+            return Response::create(Core::make('helper/json')->encode(array('error' => t('Please enter a CSV-Filename.'))));
         }
         if (sizeof($postArgs['ids']) == 0) {
-            $this->error->add(t('Please select some Users to export.'));
-            //return Response::create(Core::make('helper/json')->encode(array('error' => t('Please select some Users to export.'))));
+            return Response::create(Core::make('helper/json')->encode(array('error' => t('Please select some Users to export.'))));
         }
         if (sizeof($postArgs['baseColumns']) == 0) {
-            $this->error->add(t('You have to select at least one Basic User Attribute.'));
-            //return Response::create(Core::make('helper/json')->encode(array('error' => t('You have to select at least one Basic User Attribute.'))));
-        }
-        if ($this->error->has()) {
-            $this->view();
-            return false;
+            return Response::create(Core::make('helper/json')->encode(array('error' => t('You have to select at least one Basic User Attribute.'))));
         }
         $export = new ExportToCSV($postArgs);
         if(!$export->queueUserIds()){
@@ -135,12 +121,19 @@ class ToessLabExportMembers extends DashboardPageController
         if(!$export->createUserExportCSVFile()) {
             return Response::create(Core::make('helper/json')->encode(array('error' => t('File \'%s\' could not be created.', $export->getCSVFilename()))));
         }
-        $write = $export->writeToCSVFile();
+        //$write = $export->writeToCSVFile();
+        $write = '';
         $export->createFileObject();
         if(is_array($write)) {
             return Response::create(Core::make('helper/json')->encode(array('error' => $write)));
         } else {
-            return Response::create(Core::make('helper/json')->encode(array('success' => t('%s record(s) have been saved. The files \'%s\' and \'%s\' have been added to your <a href="%s">File Manager</a>', $write, $export->getFilenameCleaned() . '.csv', $export->getZipFilename(), \URL::to('/dashboard/files/search')))));
+            if ($export->getZipFilename() == '') {
+                $message = t('%s record(s) have been exported successfully. The file \'%s\' has been added to your <a href="%s">File Manager</a>', $write, $export->getFilenameCleaned() . '.csv', \URL::to('/dashboard/files/search'));
+            } else {
+                $message = t('%s record(s) have been exported successfully. The files \'%s\' and \'%s\' have been added to your <a href="%s">File Manager</a>', $write, $export->getFilenameCleaned() . '.csv', $export->getZipFilename(), \URL::to('/dashboard/files/search'));
+            }
+            //unlink(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.json');
+            return Response::create(Core::make('helper/json')->encode(array('success' => $message)));
         }
     }
 
@@ -149,7 +142,6 @@ class ToessLabExportMembers extends DashboardPageController
         $this->requireAsset('toess_lab_export_members');
         $this->requireAsset('bootstrapswitch');
         $this->requireAsset('jquery-ui');
-        $this->requireAsset('zend_progress');
         parent::on_start();
     }
 }
