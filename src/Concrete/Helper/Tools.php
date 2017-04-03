@@ -186,6 +186,12 @@ class Tools
         return Core::make('database');
     }
 
+    public static function setProgress($msg = '', $current = 0, $total = 0)
+    {
+        $time = new \DateTime();
+        file_put_contents(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.json', json_encode(['message' => t($msg), 'current' => $current, 'total' => $total, 'time' => $time->getTimestamp()]));
+    }
+
     /**
      * @param $filename
      * @param $mode
@@ -193,8 +199,9 @@ class Tools
      */
     public static function createFilePointer($filename, $mode)
     {
-        if (!is_writable($filename) && file_exists($filename)) {
-            return false;
+        if (file_exists($filename) && is_writable($filename)) {
+            $csvFile = fopen($filename, $mode);
+            return $csvFile;
         }
         $csvDirName = dirname($filename);
         if (!is_dir($csvDirName)) {

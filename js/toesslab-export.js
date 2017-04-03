@@ -88,33 +88,32 @@
                     console.log(data)
                     var current = parseInt(data.current, 10),
                         total = parseInt(data.total, 10),
-                        progress = parseInt(data.current / data.total * 100, 10),
-                        sign = '%';
-                    if (isNaN(current)) {
-                        current = '. ';
-                        elapsed += current;
-                        $('#progressbar-message').html(data.message);
-                        progress = parseInt($('#progressbar-progress').html());
+                        progress = parseInt(data.current / data.total * 100, 10);
+
+                    if (isNaN(progress)) {
+                        return false;
+                    }
+                    if (current === total && total > 0) {
+                        time.setSeconds(time.getSeconds() - 1);
                         if (progress <= 99) {
                             progress = 99;
                         }
                         else if (progress >= 99 || isNaN(progress)) {
                             progress = 99;
                         }
-                        $('#progressbar-progress').css({background: '#2485c4', color: '#fff', width: progress + '%', textAlign: 'center'}).html(elapsed);
-                    } else {
-                        elapsed = (data.time - parseInt(time.getTime() / 1000, 10));
-                        $('#progressbar-message').html(data.message + ':<br>' + data.current + ' of ' + data.total + '.<br>Time: ' + elapsed + ' seconds');
-                        $('#progressbar-progress-percent').html(progress + sign);
-                        elapsed = '';
                     }
-                    $('#progressbar-progress').css({background: '#2485c4', color: '#fff', width: progress + '%'});
+                    elapsed = (data.time - parseInt(time.getTime() / 1000, 10));
+                    $('#progressbar-message').html(data.message + '<br>' + data.current + ' of ' + data.total + '.<br>Time: ' + elapsed + ' seconds');
+                    $('#progressbar-progress').css({width: progress + '%'});
+                    $('#progressbar-progress-percent').html(progress + '%');
+                    elapsed = '';
                     if (current >= total) {
                         return false;
                     }
                     return [data, elapsed];
                 },
                 error: function (data) {
+                    console.log('error', data);
                     if (data.status == 404) {
                         clearInterval(timer);
                     }
@@ -158,6 +157,7 @@
                     clearInterval(timer);
                 },
                 success: function (data) {
+                    clearInterval(timer);
                     $('#progressbar-container').dialog('close');
                     $('#progressbar-message').html('');
                     $('#progressbar-progress').html('').css({width: 0});
@@ -173,7 +173,7 @@
                     } else {
                         setMessages(dats.success, false);
                     }
-                    clearInterval(timer);
+                    jQuery.fn.dialog.hideLoader();
                     return data;
                 }
             });
@@ -248,7 +248,7 @@
             var numRecsExport = 0;
             $.each(data, function (i, n) {
                 var str = '',
-                    is_checked = (n.isChecked || $('[data-search-checkbox="select-all"]').is(':checked')) ? 'checked="checked"' : '';
+                    is_checked = (/*n.isChecked || $('[data-search-checkbox="select-all"]').is(':checked') &&*/ i < 11) ? 'checked="checked"' : '';
                 str += '<tr class="' + i + '">' +
                     '<td class="col-lg-1 col-md-1 col-sm-1 col-xs-12"><input type="checkbox" id="uID_' + n.uID + '" name="uID[]" class="ccm-flat-checkbox" value="' + n.uID + '" ' + is_checked + '>';
                 str += '</td>';
@@ -263,6 +263,7 @@
                     numRecsExport += 1;
                 }
                 $('#numExportRecs').html(numRecsExport);
+                checkChecked();
             });
         },
         sortResults = function (prop, asc, data) {
@@ -368,8 +369,9 @@
         }).get();
         $.when(
         data1 = exportUsers(uIDs, basecColumns, columns, communityPoints, usersGroups),
-
-            timer = setInterval(function () {
+            setTimeout(function () {
+                jQuery.fn.dialog.showLoader();
+                timer = setInterval(function () {
                     if (i >= uIDs.length) {
                         clearInterval(timer);
                         return false;
@@ -377,6 +379,7 @@
                     data = checkProgress(time);
                     i += 1;
                 }, 1000)
+            }, 1000)
         ).then(function (data1, data) {
             console.log(data1, data);
         });

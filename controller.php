@@ -2,6 +2,7 @@
 namespace Concrete\Package\ToessLabExportMembers;
 
 use AssetList;
+use Concrete\Core\Job\Job;
 use Package;
 use Page;
 use SinglePage;
@@ -41,8 +42,12 @@ class Controller extends Package {
 
     public function uninstall()
     {
-        parent::uninstall();
+        $job = Job::getByHandle('export_users');
+        if(is_object($job)){
+            $job->uninstall();
+        }
         $this->deleteExtension();
+        parent::uninstall();
     }
     public function on_start()
     {
@@ -102,6 +107,7 @@ class Controller extends Package {
     {
         $this->getOrAddSinglePage($pkg, 'dashboard/users/toess_lab_export_members', t('toesslab - Export Members'));
         $this->getOrAddSinglePage($pkg, 'dashboard/users/toess_lab_import_members', t('toesslab - Import Members'));
+        Job::installByPackage('export_users', $pkg);
     }
 
     private function setCsvSettings()

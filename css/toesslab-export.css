@@ -6,27 +6,23 @@
 .ccm-dashboard-form-actions-wrapper {
     z-index: 560 !important;
 }
-
-#long-running-process {
-    position: absolute;
-    left: -100px;
-    top: -100px;
-
-    width: 1px;
-    height: 1px;
+#progressbar-progress-container {
+    border: 1px solid #dedede;
+    height: 25px;
+    width: 100%;
 }
-
-#zend-progressbar-container {
-    width: 100px;
-    height: 30px;
-
-    border: 1px solid #000000;
-    background-color: #ffffff;
+#progressbar-progress {
+    background: #337ab7;
+    display: block;
+    height: 25px;
+    text-align: center;
 }
-
-#zend-progressbar-done {
-    width: 0;
-    height: 30px;
-
-    background-color: #000000;
+#progressbar-progress-percent {
+    width: 100%;
+    display: block;
+    height: 25px;
+    text-align: center;
+}
+.ui-dialog-titlebar-close {
+    display: none !important;
 }

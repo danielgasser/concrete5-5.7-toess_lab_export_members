@@ -1,6 +1,7 @@
 <?php
 namespace Concrete\Package\ToessLabExportMembers\Controller\SinglePage\Dashboard\Users;
 
+use Concrete\Core\Job\Job;
 use Concrete\Core\Url\Url;
 use Concrete\Package\ToessLabExportMembers\Helper\Tools;
 use Concrete\Package\ToessLabExportMembers\ImportExport\ExportToCSV;
@@ -99,6 +100,7 @@ class ToessLabExportMembers extends DashboardPageController
 
     public function export_to_csv()
     {
+        Tools::setProgress('Preparing export', 0, 0);
         $postArgs['ids'] = Core::make('helper/json')->decode($this->post('h_uIds'));
         $postArgs['fileName'] = $this->post('h_csv_filename');
         $postArgs['baseColumns'] = Core::make('helper/json')->decode($this->post('h_uBaseCols'));
@@ -114,25 +116,25 @@ class ToessLabExportMembers extends DashboardPageController
         if (sizeof($postArgs['baseColumns']) == 0) {
             return Response::create(Core::make('helper/json')->encode(array('error' => t('You have to select at least one Basic User Attribute.'))));
         }
-        $export = new ExportToCSV($postArgs);
-        if(!$export->queueUserIds()){
-            return Response::create(Core::make('helper/json')->encode(array('error' => t('No Users found.'))));
-        }
+        $export = new ExportToCSV();
+        $write = $export->setPostData($postArgs);
+        //$write = $export->queueUserIds($postArgs);
+
+/*
         if(!$export->createUserExportCSVFile()) {
             return Response::create(Core::make('helper/json')->encode(array('error' => t('File \'%s\' could not be created.', $export->getCSVFilename()))));
         }
-        //$write = $export->writeToCSVFile();
-        $write = '';
+*/
         $export->createFileObject();
-        if(is_array($write)) {
-            return Response::create(Core::make('helper/json')->encode(array('error' => $write)));
+        if(is_array($write['result'])) {
+            return Response::create(Core::make('helper/json')->encode(array('error' => $write['result'])));
         } else {
             if ($export->getZipFilename() == '') {
-                $message = t('%s record(s) have been exported successfully. The file \'%s\' has been added to your <a href="%s">File Manager</a>', $write, $export->getFilenameCleaned() . '.csv', \URL::to('/dashboard/files/search'));
+                $message = t('%s record(s) have been exported successfully. The file \'%s\' has been added to your <a href="%s">File Manager</a>', $write['result'], $write['csvFileName'] . '.csv', \URL::to('/dashboard/files/search'));
             } else {
-                $message = t('%s record(s) have been exported successfully. The files \'%s\' and \'%s\' have been added to your <a href="%s">File Manager</a>', $write, $export->getFilenameCleaned() . '.csv', $export->getZipFilename(), \URL::to('/dashboard/files/search'));
+                $message = t('%s record(s) have been exported successfully. The files \'%s\' and \'%s\' have been added to your <a href="%s">File Manager</a>', $write['result'], $write['csvFileName'] . '.csv', $write['zipFileName'], \URL::to('/dashboard/files/search'));
             }
-            //unlink(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.json');
+            Tools::setProgress('Finalizing export. Please be patient.', $write['result'], $write['result']);
             return Response::create(Core::make('helper/json')->encode(array('success' => $message)));
         }
     }

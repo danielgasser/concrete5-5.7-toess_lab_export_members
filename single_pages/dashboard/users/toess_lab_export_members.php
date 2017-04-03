@@ -43,8 +43,14 @@ echo xdebug_get_profiler_filename();
     }(jQuery));
 
 </script>
-<div id="zend-progressbar-container">
-    <div id="zend-progressbar-done"></div>
+<div id="progressbar-container" style="display: none">
+    <div id="progressbar-message"></div>
+    <div id="progressbar-progress-container">
+        <span id="progressbar-progress">
+        </span>
+        <span id="progressbar-progress-percent"></span>
+    </div>
+
 </div>
 <?php
 ?>
