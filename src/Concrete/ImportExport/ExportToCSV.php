@@ -138,6 +138,7 @@ class ExportToCSV
         $this->appendMetaDataToUserExportCSVFile($args);
         $this->job->executeJob();
         $this->saveUserAttributes($args['columns'], $args['fileNameCleaned']);
+        Tools::setProgress('Saving user Avatars', 'x', 'x');
         return count($this->job->result);
     }
 
@@ -167,7 +168,6 @@ class ExportToCSV
             $results[$id]['communityPoints'] = Core::make('helper/json')->encode($this->getCommunityPoints($id));
             $args['columns'][] = 'communityPoints';
         }
-        $this->zipUserAvatars();
         if(sizeof($results) == 0) {
             return false;
         }
@@ -295,12 +295,12 @@ class ExportToCSV
     /**
      *
      */
-    protected function zipUserAvatars()
+    public function zipUserAvatars($fileName)
     {
         $zip = new Zip();
         $dirIncoming = DIRNAME_APPLICATION . '/files/incoming/';
         $dirAvatars = DIRNAME_APPLICATION . '/files/avatars/';
-        $this->zipName = $this->getFilenameCleaned() . '_userAvatars.zip';
+        $this->zipName = $fileName . '_userAvatars.zip';
         if (!file_exists($dirIncoming) && !is_dir($dirIncoming)) {
             mkdir($dirIncoming);
         }
@@ -315,7 +315,6 @@ class ExportToCSV
         } else {
             $this->zipName = null;
         }
-
     }
 
     /**
@@ -424,12 +423,13 @@ class ExportToCSV
                 }
                 $uaA[$c] = Core::make('helper/json')->encode($s);
             }
-            Tools::setProgress('Saving user attributes');
         }
+        $i = 0;
         foreach ($uaA as $k => $a){
             if (!fputcsv($fileHandle, array($a), $this->csvSettings['csv-delimiter'], $this->csvSettings['csv-enclosure'], $this->csvSettings['csv-escape'])) {
                 return false;
             }
+            $i++;
         }
         fclose($fileHandle);
     }

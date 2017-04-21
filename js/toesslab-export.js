@@ -90,7 +90,7 @@
                         total = parseInt(data.total, 10),
                         progress = parseInt(data.current / data.total * 100, 10);
 
-                    if (isNaN(progress)) {
+                    if (isNaN(progress) && data.current !== 'x') {
                         return false;
                     }
                     if (current === total && total > 0) {
@@ -107,9 +107,6 @@
                     $('#progressbar-progress').css({width: progress + '%'});
                     $('#progressbar-progress-percent').html(progress + '%');
                     elapsed = '';
-                    if (current >= total) {
-                        return false;
-                    }
                     return [data, elapsed];
                 },
                 error: function (data) {
@@ -157,22 +154,44 @@
                     clearInterval(timer);
                 },
                 success: function (data) {
+                    var dats = $.parseJSON(data),
+                    zipTimer;
+                    if(dats.hasOwnProperty('error')) {
+                        $('#progressbar-message').html(dats.error);
+                        //setMessages(dats.error, true);
+                    } else {
+                        $('#progressbar-message').html(dats.success);
+                        zipUserAvatars(dats.zipFileName, dats.results);
+                        jQuery.fn.dialog.showLoader();
+
+                    }
+                }
+            });
+        },
+        zipUserAvatars = function (fileName, results) {
+            $.ajax({
+                url: window.zip_user_avatars,
+                method: 'GET',
+                data: {
+                    fileName: fileName,
+                    results: results
+                },
+                success: function (data) {
                     clearInterval(timer);
+                    console.log(data)
+                    var dats = $.parseJSON(data);
                     $('#progressbar-container').dialog('close');
-                    $('#progressbar-message').html('');
                     $('#progressbar-progress').html('').css({width: 0});
                     $.each($('input[name="uID[]"]'), function (i, n) {
                         $(n).attr('checked', false);
                     });
                     $('[data-search-checkbox="select-all"]').attr('checked', false);
-                    checkChecked();
-                    var dats = $.parseJSON(data);
-                    window.scrollTo(0, 0);
                     if(dats.hasOwnProperty('error')) {
                         setMessages(dats.error, true);
                     } else {
                         setMessages(dats.success, false);
                     }
+                    checkChecked();
                     jQuery.fn.dialog.hideLoader();
                     return data;
                 }
@@ -248,7 +267,7 @@
             var numRecsExport = 0;
             $.each(data, function (i, n) {
                 var str = '',
-                    is_checked = (/*n.isChecked || $('[data-search-checkbox="select-all"]').is(':checked') &&*/ i < 11) ? 'checked="checked"' : '';
+                    is_checked = (/*n.isChecked || $('[data-search-checkbox="select-all"]').is(':checked') &&*/ i < 50) ? 'checked="checked"' : '';
                 str += '<tr class="' + i + '">' +
                     '<td class="col-lg-1 col-md-1 col-sm-1 col-xs-12"><input type="checkbox" id="uID_' + n.uID + '" name="uID[]" class="ccm-flat-checkbox" value="' + n.uID + '" ' + is_checked + '>';
                 str += '</td>';

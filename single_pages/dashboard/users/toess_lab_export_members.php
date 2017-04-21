@@ -4,6 +4,7 @@
 <script>
     var user_group_url = '<?php    echo $this->action('change_user_group')?>',
         user_export_url = '<?php    echo $this->action('export_to_csv')?>',
+        zip_user_avatars = '<?php    echo $this->action('zip_user_avatars')?>',
         session_queue_url = '<?php    echo $this->action('get_progress_queue')?>',
         save_csv_settings = '<?php    echo $this->action('save_csv_settings')?>',
         save_export_settings = '<?php    echo $this->action('save_export_settings')?>',
@@ -50,7 +51,10 @@ echo xdebug_get_profiler_filename();
         </span>
         <span id="progressbar-progress-percent"></span>
     </div>
-
+    <h3>
+        <?php
+        echo t('Please do not close this browser window!')
+        ?></h3>
 </div>
 <?php
 ?>

@@ -1,8 +1,6 @@
 <?php
 namespace Concrete\Package\ToessLabExportMembers\Controller\SinglePage\Dashboard\Users;
 
-use Concrete\Core\Job\Job;
-use Concrete\Core\Url\Url;
 use Concrete\Package\ToessLabExportMembers\Helper\Tools;
 use Concrete\Package\ToessLabExportMembers\ImportExport\ExportToCSV;
 use Core;
@@ -13,6 +11,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ToessLabExportMembers extends DashboardPageController
 {
+
+    public $export;
+    public $write;
 
     public function view()
     {
@@ -89,15 +90,6 @@ class ToessLabExportMembers extends DashboardPageController
         return Response::create(Core::make('helper/json')->encode(array('res' => $res, 'res_count' => count($res))));
     }
 
-    public function get_progress_queue()
-    {
-        $session = @fopen(DIRNAME_APPLICATION . '/files/incoming/' . 'queue.json', 'r');
-        if ($session === false)
-            return Response::create(null);
-        $progress = fgets($session);
-        return Response::create($progress);
-    }
-
     public function export_to_csv()
     {
         Tools::setProgress('Preparing export', 0, 0);
@@ -116,27 +108,23 @@ class ToessLabExportMembers extends DashboardPageController
         if (sizeof($postArgs['baseColumns']) == 0) {
             return Response::create(Core::make('helper/json')->encode(array('error' => t('You have to select at least one Basic User Attribute.'))));
         }
-        $export = new ExportToCSV();
-        $write = $export->setPostData($postArgs);
-        //$write = $export->queueUserIds($postArgs);
-
-/*
-        if(!$export->createUserExportCSVFile()) {
-            return Response::create(Core::make('helper/json')->encode(array('error' => t('File \'%s\' could not be created.', $export->getCSVFilename()))));
-        }
-*/
-        $export->createFileObject();
+        $write = $this->export->setPostData($postArgs);
+        $this->export->createFileObject();
         if(is_array($write['result'])) {
             return Response::create(Core::make('helper/json')->encode(array('error' => $write['result'])));
         } else {
-            if ($export->getZipFilename() == '') {
-                $message = t('%s record(s) have been exported successfully. The file \'%s\' has been added to your <a href="%s">File Manager</a>', $write['result'], $write['csvFileName'] . '.csv', \URL::to('/dashboard/files/search'));
-            } else {
-                $message = t('%s record(s) have been exported successfully. The files \'%s\' and \'%s\' have been added to your <a href="%s">File Manager</a>', $write['result'], $write['csvFileName'] . '.csv', $write['zipFileName'], \URL::to('/dashboard/files/search'));
-            }
-            Tools::setProgress('Finalizing export. Please be patient.', $write['result'], $write['result']);
-            return Response::create(Core::make('helper/json')->encode(array('success' => $message)));
+            $message = t('Exporting User Avatars');
+            return Response::create(Core::make('helper/json')->encode(array('success' => $message, 'zipFileName' => $write['csvFileName'], 'results' => $write)));
         }
+    }
+
+    public function zip_user_avatars()
+    {
+        $fileName = $this->get('fileName');
+        $results = $this->get('results');
+        $this->export->zipUserAvatars($fileName);
+        $msg = t('%s record(s) have been exported successfully. The files <ul><li>\'%s\'</li><li>\'%s\'</li></ul>have been added to your <a href="%s">File Manager</a>', $results['result'], $results['csvFileName'] . '.csv', $fileName . '.zip', \URL::to('/dashboard/files/search'));
+        return Response::create(Core::make('helper/json')->encode(array('success' => $msg)));
     }
 
     public function on_start()
@@ -144,6 +132,7 @@ class ToessLabExportMembers extends DashboardPageController
         $this->requireAsset('toess_lab_export_members');
         $this->requireAsset('bootstrapswitch');
         $this->requireAsset('jquery-ui');
+        $this->export = new ExportToCSV();
         parent::on_start();
     }
 }
