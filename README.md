@@ -42,3 +42,4 @@ Sort users before export:
 
 - By Number of Logins
 
+# Feel free to do with it whatever you think is the right way to go!
